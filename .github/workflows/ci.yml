@@ -32,6 +32,18 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y ocl-icd-opencl-dev pocl-opencl-icd
 
+      # libexif's vcpkg port builds via autotools and needs these from the
+      # system package manager (not vcpkg-installable) - confirmed by CI,
+      # not in any upstream doc: see vcpkg_make.cmake's check for
+      # "autoconf autoconf-archive automake libtoolize".
+      - name: Install libexif's autotools build deps (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y autoconf autoconf-archive automake libtool
+
+      - name: Install libexif's autotools build deps (macOS)
+        if: runner.os == 'macOS'
+        run: brew install autoconf autoconf-archive automake libtool
+
       - name: Set up MSVC dev prompt
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
