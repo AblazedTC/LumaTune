@@ -613,7 +613,7 @@ Timeline assumes one engineer + coding agents; sizes are per §0.
 | ✅ P0.1 | `git mv` V1 into `legacy/`; keep it runnable (`legacy/README.md`) | `cd legacy && pytest` green | S | — |
 | ✅ P0.2 | `tools/gen_golden.py`: run legacy pipeline on `tests/golden/fixtures/*` × 4 param sets, write PNGs + `hashes.json` | 48 expected files committed; script is deterministic (re-run → identical hashes) | S | P0.1, P0.3 |
 | ✅ P0.3 | Collect fixtures: 12 images covering neutral, warm cast, cool cast, dominant-colour, low-key, high-key, low-DR, high-DR, 16-bit PNG, EXIF-rotated, AdobeRGB-tagged, WebP | Each ≤ 512 px longest edge; provenance recorded in `fixtures/SOURCES.md` | S | — |
-| P0.4 | Repo skeleton: top-level CMake, presets, `vcpkg.json` (exact feature names verified against the pinned baseline, incl. OpenCL), `.clang-format`, `.clang-tidy`, CI that builds an empty `luma_core` on all four targets and prints `cv::ocl::haveOpenCL()` | CI green on 4 runners; OpenCL reported true on at least one runner or a local machine | M | — |
+| ✅ P0.4 | Repo skeleton: top-level CMake, presets, `vcpkg.json` (exact feature names verified against the pinned baseline, incl. OpenCL), `.clang-format`, `.clang-tidy`, CI that builds an empty `luma_core` on all four targets and prints `cv::ocl::haveOpenCL()` | CI green on 4 runners; OpenCL reported true on at least one runner or a local machine | M | — |
 | ✅ P0.5 | `docs/ADR/0001..0010` capturing DR-1…DR-10 | Reviewed | S | — |
 
 **Gate G0:** CI green on all platforms; golden set committed; legacy tests pass.

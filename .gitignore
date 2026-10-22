@@ -24,3 +24,8 @@ build/
 # IDE
 .vscode/
 .idea/
+
+# C++ / CMake / vcpkg
+vcpkg_installed/
+CMakeUserPresets.json
+compile_commands.json
