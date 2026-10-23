@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: ${{ matrix.preset }}
@@ -63,6 +67,20 @@ jobs:
           git clone https://github.com/microsoft/vcpkg.git "${{ github.workspace }}/vcpkg"
           "${{ github.workspace }}/vcpkg/bootstrap-vcpkg.sh"
           echo "VCPKG_ROOT=${{ github.workspace }}/vcpkg" >> "$GITHUB_ENV"
+
+      # Reuse already-built vcpkg packages (OpenCV etc.) across CI runs via
+      # the GitHub Actions cache, instead of rebuilding them from source
+      # every push. https://learn.microsoft.com/vcpkg/consume/binary-caching-github-actions-cache
+      - name: Export GHA cache credentials for vcpkg
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Enable vcpkg binary caching
+        shell: bash
+        run: echo "VCPKG_BINARY_SOURCES=clear;x-gha,readwrite" >> "$GITHUB_ENV"
 
       - name: Configure
         run: cmake --preset ${{ matrix.preset }}
