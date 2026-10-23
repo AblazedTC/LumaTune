@@ -44,6 +44,15 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install autoconf autoconf-archive automake libtool
 
+      # Apple Clang ships no omp.h/libomp, so libraw[openmp] (vcpkg) fails
+      # to even configure without this. OpenMP_ROOT is how CMake's
+      # find_package(OpenMP) locates a non-system libomp on Apple Clang.
+      - name: Install libomp for libraw's openmp feature (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install libomp
+          echo "OpenMP_ROOT=$(brew --prefix libomp)" >> "$GITHUB_ENV"
+
       - name: Set up MSVC dev prompt
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
