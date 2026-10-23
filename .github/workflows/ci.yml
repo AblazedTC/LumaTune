@@ -21,8 +21,11 @@ jobs:
             preset: win-msvc-release
           - os: macos-15 # arm64 runner
             preset: mac-arm64-release
-          - os: macos-15-large # x86_64 runner
-            preset: mac-x64-release
+          # mac-x64-release (macos-*-large) needs a billed "larger runner" -
+          # GitHub no longer has a free x64 macOS hosted image. Dropped
+          # until billing is sorted or a self-hosted runner is added
+          # (PLAN.md risk register R-12). Build/verify x64 Mac locally
+          # until then.
           - os: ubuntu-latest
             preset: linux-gcc-release
 
