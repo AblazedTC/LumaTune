@@ -1,0 +1,103 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.preset }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            preset: win-msvc-release
+          - os: macos-15 # arm64 runner
+            preset: mac-arm64-release
+          # mac-x64-release (macos-*-large) needs a billed "larger runner" -
+          # GitHub no longer has a free x64 macOS hosted image. Dropped
+          # until billing is sorted or a self-hosted runner is added
+          # (PLAN.md risk register R-12). Build/verify x64 Mac locally
+          # until then.
+          - os: ubuntu-latest
+            preset: linux-gcc-release
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Install OpenCL runtime (Linux, so haveOpenCL() can report true)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ocl-icd-opencl-dev pocl-opencl-icd
+
+      # libexif's vcpkg port builds via autotools and needs these from the
+      # system package manager (not vcpkg-installable) - confirmed by CI,
+      # not in any upstream doc: see vcpkg_make.cmake's check for
+      # "autoconf autoconf-archive automake libtoolize".
+      - name: Install libexif's autotools build deps (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y autoconf autoconf-archive automake libtool
+
+      - name: Install libexif's autotools build deps (macOS)
+        if: runner.os == 'macOS'
+        run: brew install autoconf autoconf-archive automake libtool
+
+      # Apple Clang ships no omp.h/libomp, so libraw[openmp] (vcpkg) fails
+      # to even configure without this. OpenMP_ROOT is how CMake's
+      # find_package(OpenMP) locates a non-system libomp on Apple Clang.
+      - name: Install libomp for libraw's openmp feature (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install libomp
+          echo "OpenMP_ROOT=$(brew --prefix libomp)" >> "$GITHUB_ENV"
+
+      - name: Set up MSVC dev prompt
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Bootstrap vcpkg
+        shell: bash
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git "${{ github.workspace }}/vcpkg"
+          "${{ github.workspace }}/vcpkg/bootstrap-vcpkg.sh"
+          echo "VCPKG_ROOT=${{ github.workspace }}/vcpkg" >> "$GITHUB_ENV"
+
+      # Reuse already-built vcpkg packages (OpenCV etc.) across CI runs via
+      # the GitHub Actions cache, instead of rebuilding them from source
+      # every push. https://learn.microsoft.com/vcpkg/consume/binary-caching-github-actions-cache
+      - name: Export GHA cache credentials for vcpkg
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Enable vcpkg binary caching
+        shell: bash
+        run: echo "VCPKG_BINARY_SOURCES=clear;x-gha,readwrite" >> "$GITHUB_ENV"
+
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }}
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Check src/core stays Qt-free
+        shell: bash
+        run: python tools/check_includes.py
+
+      - name: Run OpenCL probe (PLAN.md P0.4)
+        shell: bash
+        run: |
+          probe="build/${{ matrix.preset }}/opencl_probe"
+          [ -f "${probe}.exe" ] && probe="${probe}.exe"
+          "${probe}"

@@ -1,0 +1,28 @@
+{
+  "name": "lumatune",
+  "version": "0.1.0",
+  "builtin-baseline": "67972e92edd181d433927b42d8ab4bfa52ac164a",
+  "dependencies": [
+    {
+      "name": "opencv4",
+      "default-features": false,
+      "features": ["jpeg", "png", "tiff", "webp", "opencl", "intrinsics"]
+    },
+    {
+      "name": "libraw",
+      "features": ["openmp"]
+    },
+    "lcms",
+    "libexif",
+    "spdlog",
+    "nlohmann-json",
+    "tl-expected",
+    "catch2",
+    "benchmark",
+    "nanobind",
+    {
+      "name": "onnxruntime",
+      "platform": "linux"
+    }
+  ]
+}
