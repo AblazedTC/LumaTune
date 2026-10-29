@@ -41,8 +41,15 @@ struct ImageBuffer {
 
     bool onDevice() const { return std::holds_alternative<DeviceStorage>(storage); }
 
-    // Host view; downloads from device storage if needed. The engine avoids
-    // calling this mid GPU-chain (PLAN.md §9) - stages just get what they ask for.
+    // Host view of host-resident storage; zero-copy (wraps HostStorage's
+    // pointer directly - no refcount tie to it, same as any raw-pointer
+    // cv::Mat). Downloads (and owns a copy) when called on device storage.
+    // Lifetime: like cv::Mat wrapping any external buffer, the returned Mat
+    // is only valid while `this` (or whatever ImageBuffer it was copied
+    // from) is still alive - never call .mat() on a temporary ImageBuffer
+    // and keep using the result past that expression. The engine also
+    // avoids calling this mid GPU-chain (PLAN.md §9) - stages just get what
+    // they ask for.
     cv::Mat mat() const;
 
     // Device view; uploads from host storage if needed.

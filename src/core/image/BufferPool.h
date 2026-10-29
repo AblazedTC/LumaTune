@@ -13,6 +13,16 @@ namespace luma {
 // allocate+free a multi-megapixel float buffer on every slider tick
 // (PLAN.md §6.1). mutex-guarded: JobScheduler (P1.7) will call this from
 // worker threads.
+//
+// Two safety rules release() enforces:
+//  - An allocation only goes back on the free list if this is its one and
+//    only owner (use_count() == 1). If a caller copied the ImageBuffer
+//    before releasing one copy, pooling the shared allocation would let a
+//    future acquire() hand the same memory to a second, unrelated job.
+//  - Total free bytes are capped (kMaxFreeBytes); once full, a released
+//    allocation just isn't pooled; it frees normally when its last owner
+//    goes away. ponytail: reject-when-full, not LRU eviction - add that if
+//    profiling ever shows many distinct image shapes churning the cap.
 class BufferPool {
 public:
     static BufferPool& instance();
@@ -40,6 +50,8 @@ private:
     struct KeyHash {
         std::size_t operator()(const Key& key) const;
     };
+
+    std::size_t freeBytesLocked() const;
 
     mutable std::mutex m_mutex;
     std::unordered_map<Key, std::vector<std::shared_ptr<void>>, KeyHash> m_free;

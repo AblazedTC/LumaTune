@@ -20,6 +20,20 @@ TEST_CASE("BufferPool/release then acquire reuses the same allocation", "[unit][
     pool.release(std::move(second));
 }
 
+TEST_CASE("BufferPool/release of a shared allocation is not pooled", "[unit][image][bufferpool]") {
+    luma::BufferPool pool;
+
+    luma::ImageBuffer original = pool.acquire(8, 8, luma::PixelFormat::RGB_F32, luma::ColorSpace{});
+    luma::ImageBuffer alias = original; // ImageBuffer is copyable; shares the HostStorage shared_ptr
+    const void* ptr = std::get<luma::HostStorage>(original.storage).data.get();
+
+    pool.release(std::move(original));
+
+    // `alias` is still a live owner, so release() must not have pooled it.
+    CHECK(pool.freeBytes() == 0);
+    CHECK(std::get<luma::HostStorage>(alias.storage).data.get() == ptr);
+}
+
 TEST_CASE("BufferPool/different shapes don't share a free list", "[unit][image][bufferpool]") {
     luma::BufferPool pool;
 

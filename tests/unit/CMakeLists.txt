@@ -9,6 +9,7 @@ add_executable(luma_unit_tests
 
 target_link_libraries(luma_unit_tests PRIVATE luma_core Catch2::Catch2WithMain)
 luma_set_warnings(luma_unit_tests)
+luma_apply_sanitizers(luma_unit_tests)
 
 include(Catch)
 catch_discover_tests(luma_unit_tests PROPERTIES LABELS "unit")

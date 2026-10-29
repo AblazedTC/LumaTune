@@ -21,7 +21,8 @@ void toLinear(cv::Mat& image);
 void toSrgb(cv::Mat& image);
 
 // cv::cvtColor wrappers (PLAN.md §7.4). `srgbRgb` is sRGB-encoded float32
-// RGB in [0,1]; `lab` is float32 with L in [0,100].
+// RGB in [0,1]; `lab` is float32 with L in [0,100]. Only CV_8U/CV_32F are
+// valid depths for either Mat - cv::cvtColor throws on CV_64F.
 cv::Mat rgbToLab(const cv::Mat& srgbRgb);
 cv::Mat labToRgb(const cv::Mat& lab);
 

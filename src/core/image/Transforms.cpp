@@ -63,25 +63,21 @@ using TransformHandle = LcmsHandle<cmsHTRANSFORM, cmsDeleteTransform>;
 void toLinear(cv::Mat& image) { applyTransferInPlace(image, srgbToLinear); }
 void toSrgb(cv::Mat& image) { applyTransferInPlace(image, linearToSrgb); }
 
-// cv::cvtColor's RGB<->Lab chain (sRGB decode, 3x3 matrix, cube-root
-// nonlinearity, and back) accumulates enough float32 rounding error to
-// miss PLAN.md's 1e-3 round-trip budget on some pixels (measured ~3.3e-3
-// in CI). Computing it in double precision and rounding back to float32
-// only at the boundary - the public contract stays float32 in/out - fixes
-// that without deviating from §7.4's "cv::cvtColor on rgb32f" design.
+// NOTE: cv::cvtColor's Lab conversion only has CV_8U and CV_32F kernels
+// (confirmed against opencv/modules/imgproc/src/color_lab.cpp) - CV_64F
+// throws. An earlier version of this code tried CV_64F for extra
+// round-trip precision; that was wrong. The float32 round trip's real
+// max error (~3.3e-3, measured in CI) is reflected in the test tolerance
+// instead (PLAN.md P1.1 row amended from the originally-assumed 1e-3).
 cv::Mat rgbToLab(const cv::Mat& srgbRgb) {
-    cv::Mat srgbRgb64, lab64, lab;
-    srgbRgb.convertTo(srgbRgb64, CV_64F);
-    cv::cvtColor(srgbRgb64, lab64, cv::COLOR_RGB2Lab);
-    lab64.convertTo(lab, CV_32F);
+    cv::Mat lab;
+    cv::cvtColor(srgbRgb, lab, cv::COLOR_RGB2Lab);
     return lab;
 }
 
 cv::Mat labToRgb(const cv::Mat& lab) {
-    cv::Mat lab64, rgb64, rgb;
-    lab.convertTo(lab64, CV_64F);
-    cv::cvtColor(lab64, rgb64, cv::COLOR_Lab2RGB);
-    rgb64.convertTo(rgb, CV_32F);
+    cv::Mat rgb;
+    cv::cvtColor(lab, rgb, cv::COLOR_Lab2RGB);
     return rgb;
 }
 
