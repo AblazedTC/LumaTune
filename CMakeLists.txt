@@ -18,6 +18,11 @@ find_package(OpenCV CONFIG REQUIRED COMPONENTS core imgcodecs imgproc)
 
 add_subdirectory(src/core)
 
+if(LUMA_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests/unit)
+endif()
+
 # PLAN.md P0.4 acceptance check: prove cv::ocl::haveOpenCL() is reachable
 # from this vcpkg baseline on at least one CI runner.
 add_executable(opencl_probe tools/opencl_probe.cpp)
@@ -25,6 +30,6 @@ target_link_libraries(opencl_probe PRIVATE opencv_core opencv_imgcodecs opencv_i
 luma_set_warnings(opencl_probe)
 
 # luma_ui / lumatune (Qt Quick app) land in Phase 2 (P2.1); luma_py
-# (nanobind) and the Catch2/Benchmark suites land through Phase 1 as the
+# (nanobind) and the Google Benchmark suite land through Phase 1 as the
 # code they'd exercise is written. Nothing to add_subdirectory() for them
 # yet (PLAN.md §14) — wiring empty directories now would just be dead CMake.

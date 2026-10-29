@@ -1,0 +1,48 @@
+#pragma once
+
+#include <mutex>
+#include <unordered_map>
+#include <vector>
+
+#include "ImageBuffer.h"
+
+namespace luma {
+
+// Reuses 64-byte aligned host pixel buffers across pipeline runs, keyed by
+// (width, height, format), so repeated preview jobs at the same size don't
+// allocate+free a multi-megapixel float buffer on every slider tick
+// (PLAN.md §6.1). mutex-guarded: JobScheduler (P1.7) will call this from
+// worker threads.
+class BufferPool {
+public:
+    static BufferPool& instance();
+
+    // Returns a host ImageBuffer of the given shape, reusing a pooled
+    // allocation if one of the right size is free.
+    ImageBuffer acquire(int width, int height, PixelFormat format, ColorSpace colorSpace);
+
+    // Returns the buffer's backing allocation to the pool for reuse. The
+    // ImageBuffer itself is consumed; callers drop their copy after this.
+    void release(ImageBuffer&& buffer);
+
+    // Total bytes currently held by free (not checked-out) buffers.
+    std::size_t freeBytes() const;
+
+private:
+    struct Key {
+        int width;
+        int height;
+        PixelFormat format;
+        bool operator==(const Key& other) const {
+            return width == other.width && height == other.height && format == other.format;
+        }
+    };
+    struct KeyHash {
+        std::size_t operator()(const Key& key) const;
+    };
+
+    mutable std::mutex m_mutex;
+    std::unordered_map<Key, std::vector<std::shared_ptr<void>>, KeyHash> m_free;
+};
+
+} // namespace luma

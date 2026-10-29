@@ -91,6 +91,9 @@ jobs:
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }}
 
+      - name: Unit tests
+        run: ctest --preset ${{ matrix.preset }} -L unit --output-on-failure
+
       - name: Check src/core stays Qt-free
         shell: bash
         run: python tools/check_includes.py
