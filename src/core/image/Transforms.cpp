@@ -51,7 +51,11 @@ private:
     T m_handle;
 };
 
-using ProfileHandle = LcmsHandle<cmsHPROFILE, cmsCloseProfile>;
+// cmsCloseProfile actually returns cmsBool, not void, so it can't be used
+// as the void(*)(T) template argument directly - wrap it.
+void closeProfile(cmsHPROFILE profile) { cmsCloseProfile(profile); }
+
+using ProfileHandle = LcmsHandle<cmsHPROFILE, closeProfile>;
 using TransformHandle = LcmsHandle<cmsHTRANSFORM, cmsDeleteTransform>;
 
 } // namespace
