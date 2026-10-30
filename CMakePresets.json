@@ -90,5 +90,15 @@
     { "name": "linux-gcc-release", "configurePreset": "linux-gcc-release" },
     { "name": "linux-clang-asan", "configurePreset": "linux-clang-asan" },
     { "name": "linux-clang-tsan", "configurePreset": "linux-clang-tsan" }
+  ],
+  "testPresets": [
+    { "name": "win-msvc-release", "configurePreset": "win-msvc-release", "output": { "outputOnFailure": true } },
+    { "name": "win-msvc-debug", "configurePreset": "win-msvc-debug", "output": { "outputOnFailure": true } },
+    { "name": "win-msvc-asan", "configurePreset": "win-msvc-asan", "output": { "outputOnFailure": true } },
+    { "name": "mac-arm64-release", "configurePreset": "mac-arm64-release", "output": { "outputOnFailure": true } },
+    { "name": "mac-x64-release", "configurePreset": "mac-x64-release", "output": { "outputOnFailure": true } },
+    { "name": "linux-gcc-release", "configurePreset": "linux-gcc-release", "output": { "outputOnFailure": true } },
+    { "name": "linux-clang-asan", "configurePreset": "linux-clang-asan", "output": { "outputOnFailure": true } },
+    { "name": "linux-clang-tsan", "configurePreset": "linux-clang-tsan", "output": { "outputOnFailure": true } }
   ]
 }

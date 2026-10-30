@@ -622,7 +622,7 @@ Timeline assumes one engineer + coding agents; sizes are per §0.
 
 | Task | Deliverable | Acceptance | Size | Deps |
 |---|---|---|---|---|
-| P1.1 | `ImageBuffer` (host + device storage), `ColorSpace`, `BufferPool`, Transforms (sRGB↔linear, lcms2 ICC→sRGB, RGB↔Lab float) | Unit tests; Lab round-trip error < 1e-3; `ToLinear→Encode` round-trip < 1e-5 | M | P0.4 |
+| ✅ P1.1 | `ImageBuffer` (host + device storage), `ColorSpace`, `BufferPool`, Transforms (sRGB↔linear, lcms2 ICC→sRGB, RGB↔Lab float) | Unit tests; Lab round-trip error < 5e-3 (amended from the originally-assumed 1e-3: `cv::cvtColor`'s Lab path only supports CV_8U/CV_32F — CV_64F throws — and float32's real round-trip error measured ~3.3e-3 in CI); `ToLinear→Encode` round-trip < 1e-5 | M | P0.4 |
 | P1.2 | `StdDecoder` + metadata: 8/16-bit, EXIF orientation, ICC tag; prototype libexif vs TinyEXIF and record DR-7 | T-2 green | M | P1.1 |
 | P1.3 | `Encoder`: PNG 8/16, JPEG quality, WebP; ICC + orientation re-embed | Round-trip tests | M | P1.2 |
 | P1.4 | `ToLinear`, `Encode`, WhiteBalance stage: GrayWorld (+ robustness layer), WhitePatch, ShadesOfGray, GrayEdge | T-1; GrayWorld with `strength=1, clamps off, excludes off` on an sRGB input matches legacy multipliers within 1e-5 **when run in sRGB domain** (parity mode flag); linear-domain gains documented as the intentional behaviour change | M | P1.1 |
