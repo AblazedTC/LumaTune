@@ -9,12 +9,13 @@ Reading EXIF orientation and an embedded ICC profile needed a library. The candi
 table were **exiv2** (GPL-2.0+, rejected outright — forces GPL on the app), **libexif**
 (LGPL-2.1, PLAN.md's original default), and **TinyEXIF** (MIT/BSD, JPEG-only).
 
-Prototyping libexif in P1.2 surfaced two problems before any of its EXIF-parsing code was even
+Prototyping libexif in P1.2 surfaced a problem before any of its EXIF-parsing code was even
 reached: its vcpkg port builds via autotools and needs `autoconf`/`autoconf-archive`/`automake`/
 `libtool` from the system package manager — not available by default on GitHub's Linux or macOS
-hosted runners, and not needed by anything else in our dependency graph (confirmed: libraw, our
-other autotools-risk candidate, uses `vcpkg-cmake`, not `vcpkg-make`). Fixing that was real but
-avoidable CI complexity for a dependency we didn't strictly need.
+hosted runners. That turned out not to be the deciding factor on its own (CI still needs those
+autotools packages regardless — `libb2`, pulled in transitively on every platform for a reason
+unrelated to EXIF, needs them too — see the CI workflow), but it was still a real cost for a
+dependency we didn't strictly need, on top of the LGPL-2.1 obligation.
 
 ## Decision
 
@@ -41,7 +42,8 @@ verified against Pillow's own `ImageOps.exif_transpose` source, not derived from
 
 ## Consequences
 
-- `libexif` is not a dependency; the autotools CI steps it required are removed.
+- `libexif` is not a dependency, and its LGPL-2.1 obligation goes away with it. The CI autotools
+  step stays regardless (another transitive dependency, `libb2`, needs it too).
 - `exiv2`/`TinyEXIF` remain out of scope entirely — not evaluated further, not needed.
 - Writing EXIF/ICC back out on export (P1.3, FR-3) will very likely use `imwriteWithMetadata` /
   `imencodeWithMetadata` for the same reason — to be confirmed when that task starts.
