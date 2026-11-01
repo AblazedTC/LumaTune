@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -22,7 +23,7 @@ cv::Mat buildValidMask(const cv::Mat& rgb, float excludeLow, float excludeHigh) 
     cv::split(rgb, channels);
     cv::Mat mask;
     cv::inRange(channels[0], excludeLow, excludeHigh, mask);
-    for (int c = 1; c < 3; ++c) {
+    for (std::size_t c = 1; c < 3; ++c) {
         cv::Mat channelMask;
         cv::inRange(channels[c], excludeLow, excludeHigh, channelMask);
         cv::bitwise_and(mask, channelMask, mask);
@@ -43,7 +44,7 @@ std::array<float, 3> channelPercentile(const cv::Mat& rgb, const cv::Mat& mask, 
     cv::split(rgb, channels);
     std::array<float, 3> result{};
     std::vector<float> values;
-    for (int c = 0; c < 3; ++c) {
+    for (std::size_t c = 0; c < 3; ++c) {
         values.clear();
         values.reserve(static_cast<std::size_t>(rgb.rows) * static_cast<std::size_t>(rgb.cols));
         for (int row = 0; row < channels[c].rows; ++row) {
@@ -69,7 +70,7 @@ std::array<float, 3> channelPNormMean(const cv::Mat& rgb, const cv::Mat& mask, f
     std::vector<cv::Mat> channels;
     cv::split(rgb, channels);
     std::array<float, 3> result{};
-    for (int c = 0; c < 3; ++c) {
+    for (std::size_t c = 0; c < 3; ++c) {
         cv::Mat powered;
         cv::pow(cv::abs(channels[c]), p, powered);
         const cv::Scalar m = cv::mean(powered, mask);
@@ -85,7 +86,7 @@ std::array<float, 3> channelGradientPNormMean(const cv::Mat& rgb, const cv::Mat&
     std::vector<cv::Mat> channels;
     cv::split(blurred, channels);
     std::array<float, 3> result{};
-    for (int c = 0; c < 3; ++c) {
+    for (std::size_t c = 0; c < 3; ++c) {
         cv::Mat gx, gy, magnitude, powered;
         cv::Sobel(channels[c], gx, CV_32F, 1, 0);
         cv::Sobel(channels[c], gy, CV_32F, 0, 1);
@@ -100,7 +101,7 @@ std::array<float, 3> channelGradientPNormMean(const cv::Mat& rgb, const cv::Mat&
 std::array<float, 3> gainsFromStatistic(const std::array<float, 3>& stat) {
     const float grand = (stat[0] + stat[1] + stat[2]) / 3.0f;
     std::array<float, 3> gains{};
-    for (int c = 0; c < 3; ++c) {
+    for (std::size_t c = 0; c < 3; ++c) {
         gains[c] = (stat[c] > 1e-8f) ? (grand / stat[c]) : 1.0f;
     }
     return gains;
@@ -182,7 +183,7 @@ Expected<WhiteBalanceResult, ColorError> whiteBalance(const ImageBuffer& input,
     const std::array<float, 3> gwGains = applyRobustness(gainsFromStatistic(gwStat), params);
     const std::array<float, 3> sogGains = applyRobustness(gainsFromStatistic(sogStat), params);
     float disagreement = 0.0f;
-    for (int c = 0; c < 3; ++c) {
+    for (std::size_t c = 0; c < 3; ++c) {
         const float denom = std::max({gwGains[c], sogGains[c], 1e-4f});
         disagreement += std::abs(gwGains[c] - sogGains[c]) / denom;
     }
@@ -192,7 +193,7 @@ Expected<WhiteBalanceResult, ColorError> whiteBalance(const ImageBuffer& input,
         BufferPool::instance().acquire(input.width, input.height, input.format, input.colorSpace);
     std::vector<cv::Mat> channels;
     cv::split(rgb, channels);
-    for (int c = 0; c < 3; ++c) {
+    for (std::size_t c = 0; c < 3; ++c) {
         channels[c] *= static_cast<double>(gains[c]);
     }
     cv::Mat merged;
