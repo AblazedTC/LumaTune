@@ -11,9 +11,11 @@
 
 namespace luma {
 
-// EXIF orientation tag values 1-8 (ISO/IEC 1-8:2019), as read at decode
-// time. Stored so encode can round-trip it; luma_core never rotates pixel
-// data to "correct" it (io/ applies it once at decode, per PLAN.md §6.4).
+// EXIF orientation tag values 1-8. The decoder (io/StdDecoder, P1.2)
+// applies this to the pixels at decode time - by the time an ImageBuffer
+// exists, its pixels are already displayed-correct, and this field just
+// records which tag was read, so export (P1.3) can write a corrected
+// (usually Normal) tag instead of blindly copying the original forward.
 enum class Orientation { Normal, Rotate180, Rotate90Cw, Rotate90Ccw, FlipH, FlipV, Transpose, Transverse };
 
 // Host-resident pixel storage: a 64-byte aligned buffer (BufferPool is the

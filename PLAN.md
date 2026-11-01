@@ -267,7 +267,7 @@ sequenceDiagram
 LumaTune/
 ├── CMakeLists.txt                 # top-level; options LUMA_BUILD_TESTS, LUMA_BUILD_PY, LUMA_WITH_CUDA...
 ├── CMakePresets.json              # win-msvc-x64, mac-arm64, mac-x64, linux-gcc, linux-clang (+ -debug/-release/-asan)
-├── vcpkg.json                     # manifest: opencv4, libraw, onnxruntime, catch2, benchmark, tl-expected, spdlog, nlohmann-json, exiv2|libexif, lcms2
+├── vcpkg.json                     # manifest: opencv4, libraw, onnxruntime, catch2, benchmark, tl-expected, spdlog, nlohmann-json, lcms2
 ├── vcpkg-configuration.json       # registry baseline pin
 ├── cmake/
 │   ├── CompilerWarnings.cmake     # /W4 /permissive- or -Wall -Wextra -Wpedantic -Werror in CI
@@ -380,11 +380,11 @@ Display convention: 0–255 scale for black/white points (matches V1 readout); h
 
 | Capability | Library | Notes |
 |---|---|---|
-| JPEG/PNG/TIFF/WebP/BMP decode | OpenCV imgcodecs (`IMREAD_UNCHANGED | IMREAD_ANYDEPTH`) | 16-bit PNG/TIFF preserved; convert to `RGB_F32` by `/65535` or `/255` |
-| EXIF orientation + metadata | **exiv2** (GPL-2+ ⚠️ — see §13) *or* **libexif** (LGPL) *or* **TinyEXIF** (BSD) | Decision in P1.2 after prototype; default plan: **libexif** for read + **own minimal writer** for orientation/ICC passthrough |
-| ICC | **Little-CMS 2** (MIT) | Read embedded profile → tag `ColorSpace`; convert AdobeRGB/ProPhoto to sRGB primaries at load (linear) |
+| JPEG/PNG/TIFF/WebP/BMP decode | OpenCV imgcodecs `imreadWithMetadata` (`IMREAD_COLOR \| IMREAD_ANYDEPTH` — **not** `IMREAD_UNCHANGED`, which explicitly ignores EXIF orientation per its own docs, contradicting the "applied at decode" contract below) | 16-bit PNG/TIFF preserved; convert to `RGB_F32` by `/65535` or `/255`; always 3-channel (matches canonical format, no GRAY_F32 path) |
+| EXIF orientation + metadata | **OpenCV's own `imreadWithMetadata`/`imdecodeWithMetadata`** (ADR-0007; resolved P1.2) — no exiv2/libexif/TinyEXIF | Returns raw EXIF bytes (TIFF-structured, `"Exif\0\0"` prefix already stripped) and raw ICC bytes directly; `cv::imread` auto-rotates by default, so decode applies orientation to pixels — we only need to read the Orientation tag (0x0112) ourselves, via a small IFD walker, so export can write a corrected tag instead of copying the original forward |
+| ICC | **Little-CMS 2** (MIT), via `Transforms::iccToSrgb` | Decoder stores raw ICC bytes in `ColorSpace.icc`; the **ToLinear stage** (§7.2), not the decoder, converts to sRGB primaries — confirmed against the stage graph, not §6.4's looser "at load" phrasing |
 | RAW | LibRaw 0.22.2 | §15 |
-| Encode | OpenCV (`imwrite` with quality params) + libexif/lcms for metadata re-embed | FR-3 |
+| Encode | OpenCV (`imwrite`/`imencodeWithMetadata` with quality params) + lcms for ICC re-embed | FR-3; EXIF re-embed approach TBD in P1.3, likely `imwriteWithMetadata` for the same reason as decode (ADR-0007) |
 
 Every decoder returns `tl::expected<ImageBuffer, IoError>`; no exceptions cross the core boundary.
 
@@ -529,7 +529,7 @@ CMake **≥ 3.28** required (file sets for module-less headers, `CMakePresets` v
 | OpenCV | 4.14.0 | vcpkg `opencv4[png,jpeg,tiff,webp]` + OpenCL feature ⚠️ | Default features include codecs. ⚠️ Whether OpenCL is a named `opencl` feature or implicit must be confirmed against the pinned baseline in P0.4; P0.4's acceptance includes `cv::ocl::haveOpenCL()` returning true on a machine with an OpenCL runtime |
 | LibRaw | 0.22.2 | vcpkg `libraw[openmp]` | |
 | ONNX Runtime | 1.31.0 | **Per platform** (DR-10): Windows → official `Microsoft.ML.OnnxRuntime.DirectML` package (contains the DML EP) via CMake `FetchContent`; macOS arm64 → official `onnxruntime-osx-arm64` archive (CoreML EP included); macOS x64 → vcpkg `onnxruntime` built from source with CoreML enabled via an **overlay port** (no upstream prebuilt for Intel Mac); Linux → vcpkg `onnxruntime` (+ `cuda` optional) | The vcpkg port exposes no DirectML/CoreML feature flags, so vcpkg alone cannot deliver the GPU EPs. CMake asserts EP presence at configure time (`check_cxx_symbol_exists(OrtSessionOptionsAppendExecutionProvider_DML ...)` / CoreML equivalent) and packaging asserts the EP library is in the bundle |
-| lcms2, libexif, spdlog, nlohmann-json, tl-expected | latest | vcpkg | |
+| lcms2, spdlog, nlohmann-json, tl-expected | latest | vcpkg | |
 | Catch2 v3.16.1, Google Benchmark 1.10.0 | | vcpkg | |
 | nanobind 3.1.0 | | vcpkg or pip (`nanobind`) | Python ≥ 3.10, C++17 |
 
@@ -594,8 +594,7 @@ All artefacts include `THIRD_PARTY_NOTICES.md`, LGPL texts, and an "About → Li
 | LibRaw | LGPL-2.1 (chosen over CDDL) | Dynamic link, notice, source offer |
 | ONNX Runtime | MIT | Notice |
 | lcms2, nlohmann-json, tl-expected, spdlog | MIT/BSD | Notice |
-| libexif | LGPL-2.1 | Dynamic link, notice |
-| exiv2 | GPL-2.0+ ⚠️ | **Would force GPL on the app → not used unless the app becomes GPL** |
+| exiv2, libexif | GPL-2.0+ / LGPL-2.1 | **Not used** — EXIF/ICC metadata reads through OpenCV's own API instead (ADR-0007), so neither is a dependency |
 | Datasets (V4) | See §17.3 | Training-data licenses constrain **model** distribution |
 
 Project license: **MIT** for our code (compatible with all LGPL dynamic-link obligations). `THIRD_PARTY_NOTICES.md` generated by `tools/gen_notices.py` from vcpkg SPDX output.
@@ -623,7 +622,7 @@ Timeline assumes one engineer + coding agents; sizes are per §0.
 | Task | Deliverable | Acceptance | Size | Deps |
 |---|---|---|---|---|
 | ✅ P1.1 | `ImageBuffer` (host + device storage), `ColorSpace`, `BufferPool`, Transforms (sRGB↔linear, lcms2 ICC→sRGB, RGB↔Lab float) | Unit tests; Lab round-trip error < 5e-3 (amended from the originally-assumed 1e-3: `cv::cvtColor`'s Lab path only supports CV_8U/CV_32F — CV_64F throws — and float32's real round-trip error measured ~3.3e-3 in CI); `ToLinear→Encode` round-trip < 1e-5 | M | P0.4 |
-| P1.2 | `StdDecoder` + metadata: 8/16-bit, EXIF orientation, ICC tag; prototype libexif vs TinyEXIF and record DR-7 | T-2 green | M | P1.1 |
+| ✅ P1.2 | `StdDecoder` + metadata: 8/16-bit, EXIF orientation, ICC tag; resolved DR-7 (ADR-0007: OpenCV's own `imreadWithMetadata`, no EXIF library — libexif's autotools build needs system packages the CI runners don't have, and we don't need it) | T-2 green | M | P1.1 |
 | P1.3 | `Encoder`: PNG 8/16, JPEG quality, WebP; ICC + orientation re-embed | Round-trip tests | M | P1.2 |
 | P1.4 | `ToLinear`, `Encode`, WhiteBalance stage: GrayWorld (+ robustness layer), WhitePatch, ShadesOfGray, GrayEdge | T-1; GrayWorld with `strength=1, clamps off, excludes off` on an sRGB input matches legacy multipliers within 1e-5 **when run in sRGB domain** (parity mode flag); linear-domain gains documented as the intentional behaviour change | M | P1.1 |
 | P1.5 | AutoLevels on float L; **own `Clahe`** (DR-9) with `bins` param; `Curve` (knots + contrast/gamma); `Saturation` | T-1; `bins=256` matches OpenCV 8-bit CLAHE on uint8-quantised input within 1 LSB; legacy parity for levels within 0.5 L-units | L | P1.1 |
@@ -970,7 +969,7 @@ nightly: ASan/UBSan, TSan, fuzz 10 min, bench with history, package smoke T-10
 
 ## 21. Open questions
 
-1. EXIF library choice (libexif vs TinyEXIF vs minimal own parser) — resolve in P1.2 (DR-7).
+1. ~~EXIF library choice~~ — resolved P1.2 (ADR-0007: OpenCV's own API, no library).
 2. Universal macOS binary vs two bundles — revisit after P7.
 3. Do we want 16-bit TIFF export in V2? (Likely yes; cheap.)
 4. Should ToneNet's saturation output apply in linear RGB rather than Lab a/b? Decide after P6.6 ablations.

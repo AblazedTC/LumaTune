@@ -39,15 +39,19 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y ocl-icd-opencl-dev pocl-opencl-icd
 
-      # libexif's vcpkg port builds via autotools and needs these from the
-      # system package manager (not vcpkg-installable) - confirmed by CI,
-      # not in any upstream doc: see vcpkg_make.cmake's check for
-      # "autoconf autoconf-archive automake libtoolize".
-      - name: Install libexif's autotools build deps (Linux)
+      # Some of vcpkg's transitive dependencies still build via autotools
+      # and need these from the system package manager (not vcpkg-
+      # installable) - e.g. libb2 (pulled in on Linux, likely a vcpkg/
+      # onnxruntime tooling dep, not something our own manifest names
+      # directly). libexif used to be the reason for this step; it's gone
+      # (ADR-0007), but other autotools-based transitive deps remain, so
+      # this step stays as a general "autotools deps are missing" fix
+      # rather than being re-added package-by-package as CI finds each one.
+      - name: Install autotools build deps for vcpkg's autotools-based ports (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get install -y autoconf autoconf-archive automake libtool
 
-      - name: Install libexif's autotools build deps (macOS)
+      - name: Install autotools build deps for vcpkg's autotools-based ports (macOS)
         if: runner.os == 'macOS'
         run: brew install autoconf autoconf-archive automake libtool
 
