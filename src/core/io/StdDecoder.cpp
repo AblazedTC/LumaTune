@@ -107,46 +107,61 @@ Expected<ImageBuffer, IoError> decodeImage(const std::string& path) {
         return make_unexpected(IoError::FileNotFound);
     }
 
-    cv::Mat decoded;
-    std::vector<int> metadataTypes;
-    std::vector<std::vector<unsigned char>> metadata;
+    // Everything below touches OpenCV; one try/catch for the whole body
+    // (AGENTS.md §5 rule 5: no exception crosses this boundary). Depth is
+    // checked before any conversion runs, not just before cvtColor, since
+    // IMREAD_ANYDEPTH can hand back formats we don't support at all (a
+    // 32-bit float/int TIFF - FR-1 only commits to 8/16-bit) and letting
+    // those reach cv::cvtColor or an 8-bit-shaped convertTo scale would be
+    // silently wrong, not just slow.
     try {
+        cv::Mat decoded;
+        std::vector<int> metadataTypes;
+        std::vector<std::vector<unsigned char>> metadata;
         decoded = cv::imreadWithMetadata(path, metadataTypes, metadata, cv::IMREAD_COLOR | cv::IMREAD_ANYDEPTH);
+        if (decoded.empty()) {
+            return make_unexpected(IoError::DecodeFailed);
+        }
+        if (decoded.depth() != CV_8U && decoded.depth() != CV_16U) {
+            return make_unexpected(IoError::DecodeFailed); // e.g. a 32-bit float/int TIFF - out of FR-1's scope
+        }
+
+        Orientation orientation = Orientation::Normal;
+        IccProfile icc;
+        for (std::size_t i = 0; i < metadataTypes.size(); ++i) {
+            if (metadataTypes[i] == cv::IMAGE_METADATA_EXIF) {
+                if (const auto tag = readOrientationTag(metadata[i])) {
+                    orientation = orientationFromExifValue(*tag);
+                }
+            } else if (metadataTypes[i] == cv::IMAGE_METADATA_ICCP && !metadata[i].empty()) {
+                icc.data.resize(metadata[i].size());
+                std::memcpy(icc.data.data(), metadata[i].data(), metadata[i].size());
+            }
+        }
+        // NOTE: OpenCV's TIFF decoder implements no getMetadata() at all
+        // (confirmed against grfmt_tiff.cpp) - an ICC-tagged or
+        // orientation-tagged TIFF decodes with neither; it falls back to
+        // sRGB/Normal below, same as any other untagged file. JPEG/PNG/
+        // WebP are unaffected. Revisit if a TIFF+ICC fixture ever matters.
+
+        cv::Mat rgb;
+        cv::cvtColor(decoded, rgb, cv::COLOR_BGR2RGB); // this is the designated BGR->RGB call site
+
+        ColorSpace colorSpace = icc.data.empty() ? ColorSpace{Primaries::sRGB, Transfer::sRGB, std::nullopt}
+                                                  : ColorSpace{Primaries::Unknown, Transfer::Unknown, std::move(icc)};
+
+        cv::Mat rgbFloat;
+        const double scale = (rgb.depth() == CV_16U) ? (1.0 / 65535.0) : (1.0 / 255.0);
+        rgb.convertTo(rgbFloat, CV_32F, scale);
+
+        ImageBuffer buffer =
+            BufferPool::instance().acquire(rgbFloat.cols, rgbFloat.rows, PixelFormat::RGB_F32, std::move(colorSpace));
+        rgbFloat.copyTo(buffer.mat());
+        buffer.exifOrientation = orientation;
+        return buffer;
     } catch (const cv::Exception&) {
-        return make_unexpected(IoError::DecodeFailed); // AGENTS.md §5 rule 5: no exception crosses this boundary
-    }
-    if (decoded.empty()) {
         return make_unexpected(IoError::DecodeFailed);
     }
-
-    Orientation orientation = Orientation::Normal;
-    IccProfile icc;
-    for (std::size_t i = 0; i < metadataTypes.size(); ++i) {
-        if (metadataTypes[i] == cv::IMAGE_METADATA_EXIF) {
-            if (const auto tag = readOrientationTag(metadata[i])) {
-                orientation = orientationFromExifValue(*tag);
-            }
-        } else if (metadataTypes[i] == cv::IMAGE_METADATA_ICCP && !metadata[i].empty()) {
-            icc.data.resize(metadata[i].size());
-            std::memcpy(icc.data.data(), metadata[i].data(), metadata[i].size());
-        }
-    }
-
-    cv::Mat rgb;
-    cv::cvtColor(decoded, rgb, cv::COLOR_BGR2RGB); // this is the designated BGR->RGB call site
-
-    ColorSpace colorSpace = icc.data.empty() ? ColorSpace{Primaries::sRGB, Transfer::sRGB, std::nullopt}
-                                              : ColorSpace{Primaries::Unknown, Transfer::Unknown, std::move(icc)};
-
-    cv::Mat rgbFloat;
-    const double scale = (rgb.depth() == CV_16U) ? (1.0 / 65535.0) : (1.0 / 255.0);
-    rgb.convertTo(rgbFloat, CV_32F, scale);
-
-    ImageBuffer buffer =
-        BufferPool::instance().acquire(rgbFloat.cols, rgbFloat.rows, PixelFormat::RGB_F32, std::move(colorSpace));
-    rgbFloat.copyTo(buffer.mat());
-    buffer.exifOrientation = orientation;
-    return buffer;
 }
 
 } // namespace luma
