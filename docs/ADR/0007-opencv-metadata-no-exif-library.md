@@ -35,7 +35,9 @@ writing — so a ~60-line TIFF-IFD walker (`StdDecoder.cpp`'s `readOrientationTa
 "minimum code that works" rung of the ladder, not a reason to pull in a whole library. `cv::imread`
 already auto-rotates pixels to match the tag by default (which is also exactly the behaviour
 PLAN.md's `ImageBuffer::exifOrientation` contract wants — "applied at decode"); the tag value is
-read only so export (P1.3) can write a corrected tag instead of copying the original forward.
+read only for diagnostics/provenance; P1.3 confirmed export never writes any orientation tag at
+all (not even a "corrected" one) — by encode time the pixels are already displayed-correct, so
+there is nothing left to tag.
 
 The orientation-value-to-transform table (which of the 8 EXIF tags means which flip/rotate) was
 verified against Pillow's own `ImageOps.exif_transpose` source, not derived from memory.
@@ -45,7 +47,8 @@ verified against Pillow's own `ImageOps.exif_transpose` source, not derived from
 - `libexif` is not a dependency, and its LGPL-2.1 obligation goes away with it. The CI autotools
   step stays regardless (another transitive dependency, `libb2`, needs it too).
 - `exiv2`/`TinyEXIF` remain out of scope entirely — not evaluated further, not needed.
-- Writing EXIF/ICC back out on export (P1.3, FR-3) will very likely use `imwriteWithMetadata` /
-  `imencodeWithMetadata` for the same reason — to be confirmed when that task starts.
+- **P1.3 confirmed:** export uses `imwrite`/`imwriteWithMetadata` as expected. ICC bytes are
+  re-embedded as raw passthrough (`EncodeParams.preserveIcc`, default on); EXIF is never written
+  at all — see the Decision section above.
 - If a future task needs *writing* arbitrary EXIF tags (not just orientation) or XMP, this
   decision should be revisited with a new DR, not amended here (PLAN.md §0).

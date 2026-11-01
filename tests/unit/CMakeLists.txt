@@ -6,6 +6,7 @@ add_executable(luma_unit_tests
     image/BufferPoolTest.cpp
     image/TransformsTest.cpp
     io/DecoderTest.cpp
+    io/EncoderTest.cpp
 )
 
 target_link_libraries(luma_unit_tests PRIVATE luma_core Catch2::Catch2WithMain)
