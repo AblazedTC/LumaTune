@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
+#include <cstdint>
 
 #include <opencv2/core.hpp>
 
@@ -12,7 +13,7 @@
 using Catch::Approx;
 
 namespace {
-luma::ImageBuffer makeSyntheticImage(cv::Scalar lo, cv::Scalar hi, int seed = 7) {
+luma::ImageBuffer makeSyntheticImage(cv::Scalar lo, cv::Scalar hi, std::uint64_t seed = 7) {
     luma::BufferPool& pool = luma::BufferPool::instance();
     luma::ImageBuffer buffer = pool.acquire(16, 16, luma::PixelFormat::RGB_F32, {});
     cv::Mat mat = buffer.mat();
