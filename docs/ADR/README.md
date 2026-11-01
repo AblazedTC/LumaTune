@@ -12,7 +12,7 @@ edit the old one — ADRs follow the same rule: write a new file, don't rewrite 
 | [0004](./0004-opencv-t-api-opencl.md) | OpenCV 4.14 with T-API (UMat) | Accepted |
 | [0005](./0005-libraw-for-raw.md) | LibRaw 0.22.2 for RAW | Accepted |
 | [0006](./0006-opencv-t-api-device-chain-fallback.md) | T-API opt-in, device chain, auto fallback | Accepted |
-| [0007](./0007-exif-icc-library-pending.md) | EXIF/ICC library choice | Pending (P1.2) |
+| [0007](./0007-opencv-metadata-no-exif-library.md) | OpenCV's own metadata API; no EXIF library | Accepted |
 | [0008](./0008-shipped-model-training-data-provenance.md) | Shipped-model training data provenance | Accepted |
 | [0009](./0009-own-float-clahe.md) | Own float CLAHE, not `cv::CLAHE` | Accepted |
 | [0010](./0010-onnx-runtime-per-platform-sourcing.md) | ONNX Runtime sourced per platform | Accepted |
