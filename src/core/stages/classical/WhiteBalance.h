@@ -3,6 +3,8 @@
 #include "../../engine/Diagnostics.h"
 #include "../../engine/Params.h"
 #include "../../image/ImageBuffer.h"
+#include "../../image/Transforms.h"
+#include "../../util/Expected.h"
 
 namespace luma {
 
@@ -41,6 +43,12 @@ struct WhiteBalanceResult {
 //
 // `params.bypass` returns `input` unchanged (ImageBuffer is cheap to
 // copy - it shares the underlying pixel storage) with gains (1,1,1).
-WhiteBalanceResult whiteBalance(const ImageBuffer& input, const WhiteBalanceParams& params);
+//
+// Returns ColorError::UnsupportedFormat for anything other than RGB_F32 -
+// GRAY_F32 would make cv::split return one channel, so channels[1]/[2]
+// below would be out of bounds (UB), and RGBA_F32/integer formats would
+// silently compute wrong gains.
+Expected<WhiteBalanceResult, ColorError> whiteBalance(const ImageBuffer& input,
+                                                        const WhiteBalanceParams& params);
 
 } // namespace luma

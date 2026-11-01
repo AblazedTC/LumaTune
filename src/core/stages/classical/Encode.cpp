@@ -3,12 +3,16 @@
 #include <opencv2/core.hpp>
 
 #include "../../image/BufferPool.h"
-#include "../../image/Transforms.h"
 
 namespace luma {
 
-ImageBuffer encodeStage(const ImageBuffer& input) {
-    ImageBuffer output = BufferPool::instance().acquire(input.width, input.height, input.format, input.colorSpace);
+Expected<ImageBuffer, ColorError> encodeStage(const ImageBuffer& input) {
+    if (input.colorSpace.transfer != Transfer::Linear) {
+        return make_unexpected(ColorError::WrongTransfer);
+    }
+
+    ImageBuffer output =
+        BufferPool::instance().acquire(input.width, input.height, input.format, input.colorSpace);
     input.mat().copyTo(output.mat());
     output.exifOrientation = input.exifOrientation;
 

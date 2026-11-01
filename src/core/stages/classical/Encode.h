@@ -1,6 +1,8 @@
 #pragma once
 
 #include "../../image/ImageBuffer.h"
+#include "../../image/Transforms.h"
+#include "../../util/Expected.h"
 
 namespace luma {
 
@@ -9,6 +11,11 @@ namespace luma {
 // is applied in the whole pipeline). Always runs; not user-bypassable
 // (no EncodeParams - this is a fixed domain boundary, not a creative
 // adjustment, and distinct from io/Encoder.h's file encoder).
-ImageBuffer encodeStage(const ImageBuffer& input);
+//
+// Returns ColorError::WrongTransfer if `input.colorSpace.transfer` isn't
+// Transfer::Linear - applying the OETF to already-encoded input would
+// double-encode it silently (AGENTS.md §6: "Stage returns Error::
+// WrongTransfer if fed the wrong domain").
+Expected<ImageBuffer, ColorError> encodeStage(const ImageBuffer& input);
 
 } // namespace luma

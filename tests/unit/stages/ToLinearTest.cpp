@@ -18,15 +18,17 @@ using Catch::Approx;
 
 namespace {
 luma::ImageBuffer makeFlatImage(float value, luma::ColorSpace colorSpace) {
+    luma::BufferPool& pool = luma::BufferPool::instance();
     luma::ImageBuffer buffer =
-        luma::BufferPool::instance().acquire(4, 4, luma::PixelFormat::RGB_F32, std::move(colorSpace));
+        pool.acquire(4, 4, luma::PixelFormat::RGB_F32, std::move(colorSpace));
     buffer.mat().setTo(cv::Scalar(value, value, value));
     return buffer;
 }
 } // namespace
 
 TEST_CASE("ToLinear/sRGB input is linearised and re-tagged", "[unit][stages][tolinear]") {
-    auto image = makeFlatImage(0.5f, {luma::Primaries::sRGB, luma::Transfer::sRGB, std::nullopt});
+    luma::ColorSpace srgb{luma::Primaries::sRGB, luma::Transfer::sRGB, std::nullopt};
+    auto image = makeFlatImage(0.5f, srgb);
     auto result = luma::toLinearStage(image);
     REQUIRE(result.has_value());
 
@@ -37,31 +39,49 @@ TEST_CASE("ToLinear/sRGB input is linearised and re-tagged", "[unit][stages][tol
 }
 
 TEST_CASE("ToLinear/Linear input is a copy-through", "[unit][stages][tolinear]") {
-    auto image = makeFlatImage(0.42f, {luma::Primaries::sRGB, luma::Transfer::Linear, std::nullopt});
+    luma::ColorSpace linear{luma::Primaries::sRGB, luma::Transfer::Linear, std::nullopt};
+    auto image = makeFlatImage(0.42f, linear);
     auto result = luma::toLinearStage(image);
     REQUIRE(result.has_value());
     CHECK(result->mat().at<cv::Vec3f>(0, 0)[0] == Approx(0.42f));
 }
 
 TEST_CASE("ToLinear/Gamma22 input uses a pure gamma inverse", "[unit][stages][tolinear]") {
-    auto image = makeFlatImage(0.5f, {luma::Primaries::sRGB, luma::Transfer::Gamma22, std::nullopt});
+    luma::ColorSpace gamma22{luma::Primaries::sRGB, luma::Transfer::Gamma22, std::nullopt};
+    auto image = makeFlatImage(0.5f, gamma22);
     auto result = luma::toLinearStage(image);
     REQUIRE(result.has_value());
     CHECK(result->mat().at<cv::Vec3f>(0, 0)[0] == Approx(std::pow(0.5f, 2.2f)).margin(1e-5));
 }
 
-TEST_CASE("ToLinear/invalid ICC data fails cleanly instead of crashing", "[unit][stages][tolinear]") {
+TEST_CASE("ToLinear/invalid ICC data fails cleanly instead of crashing",
+          "[unit][stages][tolinear]") {
     luma::IccProfile garbage;
     garbage.data = std::vector<std::byte>(16, std::byte{0xAB}); // not a real ICC profile
-    auto image = makeFlatImage(0.5f, {luma::Primaries::Unknown, luma::Transfer::Unknown, std::move(garbage)});
+    luma::ColorSpace unknown{luma::Primaries::Unknown, luma::Transfer::Unknown,
+                             std::move(garbage)};
+    auto image = makeFlatImage(0.5f, unknown);
 
     auto result = luma::toLinearStage(image);
     REQUIRE_FALSE(result.has_value());
     CHECK(result.error() == luma::ColorError::IccParseFailed);
 }
 
-TEST_CASE("ToLinear/a real embedded ICC profile is consumed without error", "[unit][stages][tolinear]") {
-    auto decoded = luma::decodeImage(std::string(LUMA_REPO_ROOT) + "/tests/golden/fixtures/adobergb_tagged.jpg");
+TEST_CASE("ToLinear/non-sRGB primaries without an ICC profile are rejected",
+          "[unit][stages][tolinear]") {
+    luma::ColorSpace adobe{luma::Primaries::AdobeRGB, luma::Transfer::sRGB, std::nullopt};
+    auto image = makeFlatImage(0.5f, adobe);
+
+    auto result = luma::toLinearStage(image);
+    REQUIRE_FALSE(result.has_value());
+    CHECK(result.error() == luma::ColorError::UnsupportedPrimaries);
+}
+
+TEST_CASE("ToLinear/a real embedded ICC profile is consumed without error",
+          "[unit][stages][tolinear]") {
+    const std::string path =
+        std::string(LUMA_REPO_ROOT) + "/tests/golden/fixtures/adobergb_tagged.jpg";
+    auto decoded = luma::decodeImage(path);
     REQUIRE(decoded.has_value());
     REQUIRE(decoded->colorSpace.icc.has_value());
 
@@ -71,7 +91,8 @@ TEST_CASE("ToLinear/a real embedded ICC profile is consumed without error", "[un
     CHECK_FALSE(result->colorSpace.icc.has_value());
 }
 
-TEST_CASE("ToLinear-Encode round trip is within 1e-5 (P1.1's budget)", "[unit][stages][tolinear][encode]") {
+TEST_CASE("ToLinear-Encode round trip is within 1e-5 (P1.1's budget)",
+          "[unit][stages][tolinear][encode]") {
     luma::ImageBuffer image =
         luma::BufferPool::instance().acquire(8, 8, luma::PixelFormat::RGB_F32, luma::ColorSpace{});
     cv::RNG rng(5);
@@ -81,11 +102,12 @@ TEST_CASE("ToLinear-Encode round trip is within 1e-5 (P1.1's budget)", "[unit][s
 
     auto linear = luma::toLinearStage(image);
     REQUIRE(linear.has_value());
-    luma::ImageBuffer encoded = luma::encodeStage(*linear);
+    auto encoded = luma::encodeStage(*linear);
+    REQUIRE(encoded.has_value());
 
-    CHECK(encoded.colorSpace.transfer == luma::Transfer::sRGB);
+    CHECK(encoded->colorSpace.transfer == luma::Transfer::sRGB);
     double maxDiff = 0.0;
-    cv::Mat back = encoded.mat();
+    cv::Mat back = encoded->mat();
     for (int row = 0; row < original.rows; ++row) {
         const float* a = original.ptr<float>(row);
         const float* b = back.ptr<float>(row);

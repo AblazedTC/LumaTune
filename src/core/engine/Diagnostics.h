@@ -12,7 +12,7 @@ namespace luma {
 // engine actually has stages to aggregate diagnostics from.
 struct WbDiag {
     WbMethod used{WbMethod::GrayWorld};
-    std::array<float, 3> avgRgb{0.f, 0.f, 0.f}; // the per-method channel statistic, not necessarily a mean
+    std::array<float, 3> avgRgb{0.f, 0.f, 0.f}; // per-method statistic, not always a mean
     std::array<float, 3> gains{1.f, 1.f, 1.f};
     float confidence{1.f};
     std::string explanation;

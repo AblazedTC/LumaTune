@@ -59,8 +59,8 @@ std::array<float, 3> channelPercentile(const cv::Mat& rgb, const cv::Mat& mask, 
             continue;
         }
         std::sort(values.begin(), values.end());
-        const auto idx = static_cast<std::size_t>((percentile / 100.0) * static_cast<double>(values.size() - 1));
-        result[c] = values[idx];
+        const double rank = (percentile / 100.0) * static_cast<double>(values.size() - 1);
+        result[c] = values[static_cast<std::size_t>(rank)];
     }
     return result;
 }
@@ -78,7 +78,8 @@ std::array<float, 3> channelPNormMean(const cv::Mat& rgb, const cv::Mat& mask, f
     return result;
 }
 
-std::array<float, 3> channelGradientPNormMean(const cv::Mat& rgb, const cv::Mat& mask, float p, float sigma) {
+std::array<float, 3> channelGradientPNormMean(const cv::Mat& rgb, const cv::Mat& mask, float p,
+                                               float sigma) {
     cv::Mat blurred;
     cv::GaussianBlur(rgb, blurred, cv::Size(0, 0), sigma);
     std::vector<cv::Mat> channels;
@@ -137,13 +138,18 @@ std::string explanationFor(WbMethod method) {
 
 } // namespace
 
-WhiteBalanceResult whiteBalance(const ImageBuffer& input, const WhiteBalanceParams& params) {
+Expected<WhiteBalanceResult, ColorError> whiteBalance(const ImageBuffer& input,
+                                                        const WhiteBalanceParams& params) {
+    if (input.format != PixelFormat::RGB_F32) {
+        return make_unexpected(ColorError::UnsupportedFormat);
+    }
+
     if (params.bypass) {
         WbDiag diag;
         diag.used = params.method;
         diag.confidence = 1.0f;
         diag.explanation = "White balance bypassed";
-        return {input, diag}; // ImageBuffer copy - shares the same (read-only) pixel storage
+        return WhiteBalanceResult{input, diag}; // ImageBuffer copy - shares the pixel storage
     }
 
     const cv::Mat rgb = input.mat();
@@ -168,9 +174,11 @@ WhiteBalanceResult whiteBalance(const ImageBuffer& input, const WhiteBalancePara
 
     // Confidence: agreement between a GrayWorld and a ShadesOfGray estimate
     // on this same input, regardless of which method is actually selected.
-    const std::array<float, 3> gwStat = (params.method == WbMethod::GrayWorld) ? stat : channelMean(rgb, mask);
-    const std::array<float, 3> sogStat =
-        (params.method == WbMethod::ShadesOfGray) ? stat : channelPNormMean(rgb, mask, params.sogNorm);
+    const std::array<float, 3> gwStat =
+        (params.method == WbMethod::GrayWorld) ? stat : channelMean(rgb, mask);
+    const std::array<float, 3> sogStat = (params.method == WbMethod::ShadesOfGray)
+                                              ? stat
+                                              : channelPNormMean(rgb, mask, params.sogNorm);
     const std::array<float, 3> gwGains = applyRobustness(gainsFromStatistic(gwStat), params);
     const std::array<float, 3> sogGains = applyRobustness(gainsFromStatistic(sogStat), params);
     float disagreement = 0.0f;
@@ -180,7 +188,8 @@ WhiteBalanceResult whiteBalance(const ImageBuffer& input, const WhiteBalancePara
     }
     const float confidence = 1.0f - std::clamp(disagreement / 3.0f, 0.0f, 1.0f);
 
-    ImageBuffer output = BufferPool::instance().acquire(input.width, input.height, input.format, input.colorSpace);
+    ImageBuffer output =
+        BufferPool::instance().acquire(input.width, input.height, input.format, input.colorSpace);
     std::vector<cv::Mat> channels;
     cv::split(rgb, channels);
     for (int c = 0; c < 3; ++c) {
@@ -197,7 +206,7 @@ WhiteBalanceResult whiteBalance(const ImageBuffer& input, const WhiteBalancePara
     diag.gains = gains;
     diag.confidence = confidence;
     diag.explanation = explanationFor(params.method);
-    return {output, diag};
+    return WhiteBalanceResult{output, diag};
 }
 
 } // namespace luma

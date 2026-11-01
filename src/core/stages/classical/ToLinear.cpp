@@ -7,7 +7,8 @@
 namespace luma {
 
 Expected<ImageBuffer, ColorError> toLinearStage(const ImageBuffer& input) {
-    ImageBuffer output = BufferPool::instance().acquire(input.width, input.height, input.format, input.colorSpace);
+    ImageBuffer output =
+        BufferPool::instance().acquire(input.width, input.height, input.format, input.colorSpace);
     input.mat().copyTo(output.mat());
     output.exifOrientation = input.exifOrientation;
 
@@ -19,6 +20,16 @@ Expected<ImageBuffer, ColorError> toLinearStage(const ImageBuffer& input) {
             return make_unexpected(result.error());
         }
         toLinear(mat); // iccToSrgb leaves it sRGB-encoded; now apply the sRGB EOTF
+    } else if (output.colorSpace.primaries == Primaries::AdobeRGB ||
+               output.colorSpace.primaries == Primaries::ProPhoto ||
+               output.colorSpace.primaries == Primaries::CameraNative) {
+        // Non-sRGB primaries with no ICC profile to convert them via: this
+        // stage has no standalone primaries-conversion matrix (only
+        // Transforms::iccToSrgb, which needs real ICC bytes). No current
+        // caller produces this (StdDecoder only ever sets sRGB or
+        // Unknown+icc) - fail loudly rather than silently mis-tag the
+        // output as sRGB when it isn't.
+        return make_unexpected(ColorError::UnsupportedPrimaries);
     } else if (output.colorSpace.transfer == Transfer::Linear) {
         // already linear - nothing to do
     } else if (output.colorSpace.transfer == Transfer::Gamma22) {
