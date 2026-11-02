@@ -1,6 +1,7 @@
 find_package(lcms2 CONFIG REQUIRED)
 find_package(tl-expected CONFIG REQUIRED)
 find_package(Threads REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 add_library(luma_core STATIC
     image/PixelFormat.cpp
@@ -19,6 +20,7 @@ add_library(luma_core STATIC
     engine/Pipeline.cpp
     engine/JobScheduler.cpp
     engine/PreviewPolicy.cpp
+    engine/ParamsJson.cpp
 )
 
 target_include_directories(luma_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -27,7 +29,7 @@ set_target_properties(luma_core PROPERTIES CXX_EXTENSIONS OFF)
 
 target_link_libraries(luma_core
     PUBLIC opencv_core opencv_imgproc opencv_imgcodecs tl::expected Threads::Threads
-    PRIVATE lcms2::lcms2
+    PRIVATE lcms2::lcms2 nlohmann_json::nlohmann_json
 )
 
 luma_set_warnings(luma_core)
