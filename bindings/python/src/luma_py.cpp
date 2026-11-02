@@ -2,13 +2,20 @@
 // exactly the two functions the task names. No per-stage bindings - T-5's
 // parity suite (a separate, still-pending follow-up, same as this
 // module's pip-installable packaging) works against this same surface.
+//
+// nanobind/Python.h must be the first include in this file, full stop:
+// Python's pyconfig.h unconditionally #defines _POSIX_C_SOURCE/
+// _XOPEN_SOURCE, and if anything else (even a standard header like
+// <string>) defines them first with a different value, pyconfig.h's
+// redefinition becomes a hard error under -Werror. Confirmed by a real
+// CI build failure, not just docs lore.
+#include <nanobind/nanobind.h>
+#include <nanobind/ndarray.h>
+
 #include <cstddef>
 #include <cstring>
 #include <stdexcept>
 #include <string>
-
-#include <nanobind/nanobind.h>
-#include <nanobind/ndarray.h>
 
 #include "engine/ParamsJson.h"
 #include "engine/Pipeline.h"
