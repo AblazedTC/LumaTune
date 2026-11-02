@@ -1,6 +1,7 @@
 #include "Clahe.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <vector>
 
@@ -109,27 +110,33 @@ ClaheResult clahe(const cv::Mat& lab, const ClaheParams& params) {
         return tileLuts[static_cast<std::size_t>(ty * tilesX + tx)][static_cast<std::size_t>(bin)];
     };
 
+    // Tile-center interpolation geometry, copied exactly from OpenCV's own
+    // CLAHE_Interpolation_Body (modules/imgproc/src/clahe.cpp): position is
+    // measured in tile-width/-height units offset by half a tile, floored
+    // for the "earlier" neighbour, with the two neighbours clamped (not
+    // wrapped) at the grid edges.
+    const float tileHeightF = static_cast<float>(tileHeight);
+    const float tileWidthF = static_cast<float>(tileWidth);
+
     cv::Mat outputL(L.rows, L.cols, CV_32F);
     cv::parallel_for_(cv::Range(0, L.rows), [&](const cv::Range& range) {
         for (int row = range.start; row < range.end; ++row) {
-            int ty1 = row / tileHeight - 1;
-            const int ty2 = ty1 + 1;
-            const float tileHeightF = static_cast<float>(tileHeight);
-            const float tileTopF = static_cast<float>(ty1 + 1) * tileHeightF;
-            const float ya = (static_cast<float>(row) - tileTopF + 0.5f) / tileHeightF;
-            ty1 = std::clamp(ty1, 0, tilesY - 1);
-            const int ty2c = std::clamp(ty2, 0, tilesY - 1);
+            const float tyf = static_cast<float>(row) / tileHeightF - 0.5f;
+            const int ty1raw = static_cast<int>(std::floor(tyf));
+            const int ty2raw = ty1raw + 1;
+            const float ya = tyf - static_cast<float>(ty1raw);
+            const int ty1 = std::clamp(ty1raw, 0, tilesY - 1);
+            const int ty2c = std::clamp(ty2raw, 0, tilesY - 1);
 
             const float* srcRow = L.ptr<float>(row);
             float* dstRow = outputL.ptr<float>(row);
             for (int col = 0; col < L.cols; ++col) {
-                int tx1 = col / tileWidth - 1;
-                const int tx2 = tx1 + 1;
-                const float tileWidthF = static_cast<float>(tileWidth);
-                const float tileLeftF = static_cast<float>(tx1 + 1) * tileWidthF;
-                const float xa = (static_cast<float>(col) - tileLeftF + 0.5f) / tileWidthF;
-                tx1 = std::clamp(tx1, 0, tilesX - 1);
-                const int tx2c = std::clamp(tx2, 0, tilesX - 1);
+                const float txf = static_cast<float>(col) / tileWidthF - 0.5f;
+                const int tx1raw = static_cast<int>(std::floor(txf));
+                const int tx2raw = tx1raw + 1;
+                const float xa = txf - static_cast<float>(tx1raw);
+                const int tx1 = std::clamp(tx1raw, 0, tilesX - 1);
+                const int tx2c = std::clamp(tx2raw, 0, tilesX - 1);
 
                 const int bin = binIndex(srcRow[col], params.bins);
                 const float v11 = lutAt(ty1, tx1, bin);
