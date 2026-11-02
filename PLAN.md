@@ -454,7 +454,7 @@ Per-job cache keyed by `(sourceHash, previewLevel, stageIdx, paramsHashUpToStage
 
 ### 7.6 Scheduling, preview, cancellation (replaces A-4, A-5)
 
-- Worker pool: `std::jthread` × (hw_threads − 1), min 2. **One worker is reserved for PREVIEW jobs** so interactive work never queues behind FULL/BATCH.
+- Worker pool: `std::thread` × (hw_threads − 1), min 2 (not `std::jthread` — Apple Clang's libc++ doesn't implement `<stop_token>` yet, confirmed by a real CI build failure in P1.7; a per-worker stop token would have been redundant with a shared shutdown flag anyway). **One worker is reserved for PREVIEW jobs** so interactive work never queues behind FULL/BATCH.
 - Job kinds and their queues:
   - `PREVIEW` — **latest-only slot per document** (depth 1): submitting a new preview replaces any queued one and requests stop on the running one. Proxy ≤ 1.5 MP, longest edge ≤ 1600.
   - `FULL` — one per document, scheduled 400 ms after the last PREVIEW completes; cancelled when a newer PREVIEW is submitted; its result is published only if its `generation` equals the document's current generation.
@@ -560,7 +560,7 @@ CMake **≥ 3.28** required (file sets for module-less headers, `CMakePresets` v
 | T-6 | UI | Qt Quick Test + QTest | Controllers: generation drop logic, latest-only slot, debounce, preset round-trip; QML: load fixture → `PreviewItem` has texture; slider → one job submitted |
 | T-7 | Bench | Google Benchmark | Each stage and full pipeline at 1.5/12/24/45 MP, CPU and UMat (incl. transfers); protocol in §11.4 |
 | T-8 | Preview fidelity | Catch2 | Percentiles on the 1.5 MP proxy vs full-res within 0.5 L-units on **procedurally generated 12 MP and 24 MP images** (gradients + Perlin noise + hard edges, seeded) and on any ≥ 8 MP fixture available locally (skipped in CI if absent). The 256–512 px goldens are **not** valid inputs for this test |
-| T-9 | Sanitizers | ASan/UBSan (Linux Clang), TSan on engine tests | Nightly |
+| T-9 | Sanitizers | ASan/UBSan (Linux Clang), TSan on engine tests | Nightly (`.github/workflows/nightly-sanitizers.yml`, added P1.7 since `JobScheduler` is the first genuinely concurrent code; runs `linux-clang-asan`/`linux-clang-tsan` on a schedule + `workflow_dispatch`, deliberately not part of the PR-blocking `ci.yml`) |
 | T-10 | Packaging smoke | CI | Launch packaged app headless (`QT_QPA_PLATFORM=offscreen`) with `--self-test`: opens fixture, runs pipeline, exports, exits 0 |
 
 Fixtures are tiny and public-domain/own photos; stored in-repo (not LFS) if < 5 MB total.
@@ -627,7 +627,7 @@ Timeline assumes one engineer + coding agents; sizes are per §0.
 | ✅ P1.4 | `ToLinear`, `Encode`, WhiteBalance stage: GrayWorld (+ robustness layer), WhitePatch, ShadesOfGray, GrayEdge | T-1; GrayWorld with `strength=1, clamps off, excludes off` on an sRGB input matches legacy **gain ratios** (gains[R]/gains[G], gains[B]/gains[G]) within ~1e-4 — not raw gain magnitudes, since the mandatory G-normalisation (gains[G] always exactly 1) and legacy's grand-mean normalisation are different, intentional conventions; see `WhiteBalance.h`'s comment | M | P1.1 |
 | ✅ P1.5 | AutoLevels on float L; **own `Clahe`** (DR-9) with `bins` param; `Curve` (knots + contrast/gamma); `Saturation` | T-1; `bins=256` matches OpenCV 8-bit CLAHE on uint8-quantised input within 1 LSB (verified directly against `cv::createCLAHE` in `ClaheTest.cpp`, not yet a `tests/golden/` fixture — see `docs/STAGES.md`); legacy parity for levels within 0.5 L-units | L | P1.1 |
 | ✅ P1.6 | `Pipeline` chain with transfer-domain contract + typed `Diagnostics` + histograms | T-3 golden within Phase-1 tolerances (amended — see T-3's row in §11) | M | P1.4, P1.5 |
-| P1.7 | `JobScheduler`: reserved preview worker, latest-only slot, generation logic, snapshot semantics for EXPORT/BATCH, `CancelToken`, `PreviewPolicy`, cache | TSan clean; unit tests for cancel/stale-drop/replace-queued; T-8 on procedural 12/24 MP inputs | L | P1.6 |
+| P1.7 | `JobScheduler`: reserved preview worker, latest-only slot, generation logic, snapshot semantics for EXPORT/BATCH, `CancelToken`, `PreviewPolicy`, cache — the scheduler core (worker pool, PREVIEW/FULL slots, generation, cancellation, EXPORT/BATCH) and `CancelToken` landed; `PreviewPolicy` (proxy builder), the stage-output cache (§7.5), and T-8 are a separate, still-pending follow-up, so this task isn't `✅` yet. The 400ms FULL-debounce is documented as the caller's timing policy (e.g. a UI-layer timer in Phase 2), not something this Qt-free scheduler owns | TSan clean; unit tests for cancel/stale-drop/replace-queued; T-8 on procedural 12/24 MP inputs | L | P1.6 |
 | P1.8 | `luma_py` nanobind module: `decode`, `run_pipeline(np.ndarray, params_json) -> (np.ndarray, diag_json)` | T-5 parity suite green | M | P1.6 |
 | P1.9 | Benchmarks T-7 baseline (CPU) on the reference machine | Numbers recorded in `docs/PERF.md` with machine spec | S | P1.6 |
 | P1.10 | UMat path for ToLinear/Encode/cvtColor/resize/Levels with device-resident intermediates + startup probe + fallback | Same golden results on GPU (tolerance 1e-3); end-to-end bench (incl. transfers) ≥ 1.3× on reference iGPU, else GPU defaults Off | M | P1.6, P1.9 |
