@@ -4,7 +4,6 @@
 #include <condition_variable>
 #include <deque>
 #include <mutex>
-#include <stop_token>
 #include <thread>
 #include <unordered_map>
 #include <vector>
@@ -46,15 +45,20 @@ struct JobScheduler::Impl {
     std::deque<std::shared_ptr<Descriptor>> m_otherQueue; // Full/Export/Batch
     int m_inFlight{0};
     bool m_shuttingDown{false};
-    std::vector<std::jthread> m_workers;
+    std::vector<std::thread> m_workers;
 
+    // Not std::jthread/stop_token (AGENTS.md's general C++20 guidance):
+    // Apple Clang's libc++ (Xcode 16, this project's pinned macOS
+    // toolchain) doesn't implement <stop_token> yet - confirmed by a real
+    // CI build failure, not assumed. A per-worker stop_token would have
+    // been redundant with m_shuttingDown anyway (nothing here ever stops
+    // just one worker independently), so plain std::thread + join() loses
+    // nothing.
     explicit Impl(unsigned threadCountOverride) {
         const unsigned total = resolveThreadCount(threadCountOverride);
-        m_workers.emplace_back(
-            [this](std::stop_token st) { workerLoop(st, /*previewOnly=*/true); });
+        m_workers.emplace_back([this] { workerLoop(/*previewOnly=*/true); });
         for (unsigned i = 1; i < total; ++i) {
-            m_workers.emplace_back(
-                [this](std::stop_token st) { workerLoop(st, /*previewOnly=*/false); });
+            m_workers.emplace_back([this] { workerLoop(/*previewOnly=*/false); });
         }
     }
 
@@ -65,10 +69,8 @@ struct JobScheduler::Impl {
         }
         m_cv.notify_all();
         for (auto& worker : m_workers) {
-            worker.request_stop();
+            worker.join();
         }
-        m_cv.notify_all();
-        // std::jthread's destructor joins automatically.
     }
 
     // Cancels and clears whatever currently occupies `slot` (queued or
@@ -110,17 +112,15 @@ struct JobScheduler::Impl {
         m_cv.notify_all();
     }
 
-    void workerLoop(std::stop_token stoken, bool previewOnly) {
+    void workerLoop(bool previewOnly) {
         auto& queue = previewOnly ? m_previewQueue : m_otherQueue;
         while (true) {
             std::shared_ptr<Descriptor> job;
             {
                 std::unique_lock<std::mutex> lock(m_mutex);
-                m_cv.wait(lock, [&] {
-                    return stoken.stop_requested() || m_shuttingDown || !queue.empty();
-                });
+                m_cv.wait(lock, [&] { return m_shuttingDown || !queue.empty(); });
                 if (queue.empty()) {
-                    if (stoken.stop_requested() || m_shuttingDown) {
+                    if (m_shuttingDown) {
                         return;
                     }
                     continue;

@@ -454,7 +454,7 @@ Per-job cache keyed by `(sourceHash, previewLevel, stageIdx, paramsHashUpToStage
 
 ### 7.6 Scheduling, preview, cancellation (replaces A-4, A-5)
 
-- Worker pool: `std::jthread` × (hw_threads − 1), min 2. **One worker is reserved for PREVIEW jobs** so interactive work never queues behind FULL/BATCH.
+- Worker pool: `std::thread` × (hw_threads − 1), min 2 (not `std::jthread` — Apple Clang's libc++ doesn't implement `<stop_token>` yet, confirmed by a real CI build failure in P1.7; a per-worker stop token would have been redundant with a shared shutdown flag anyway). **One worker is reserved for PREVIEW jobs** so interactive work never queues behind FULL/BATCH.
 - Job kinds and their queues:
   - `PREVIEW` — **latest-only slot per document** (depth 1): submitting a new preview replaces any queued one and requests stop on the running one. Proxy ≤ 1.5 MP, longest edge ≤ 1600.
   - `FULL` — one per document, scheduled 400 ms after the last PREVIEW completes; cancelled when a newer PREVIEW is submitted; its result is published only if its `generation` equals the document's current generation.

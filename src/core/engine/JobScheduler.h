@@ -19,7 +19,9 @@ using DocumentId = std::uint64_t;
 // responsibility (see CancelToken.h).
 using JobFn = std::function<void(const CancelToken&)>;
 
-// PLAN.md §7.6. Worker pool: max(2, hw_threads-1) `std::jthread`s, one of
+// PLAN.md §7.6. Worker pool: max(2, hw_threads-1) `std::thread`s (not
+// `std::jthread` - Apple Clang's libc++ doesn't implement `<stop_token>`
+// yet, confirmed by a real CI build failure), one of
 // which is reserved for PREVIEW jobs so interactive work never queues
 // behind FULL/EXPORT/BATCH.
 //

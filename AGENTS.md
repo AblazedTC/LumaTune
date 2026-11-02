@@ -132,7 +132,7 @@ Agents regularly break these; read twice.
 
 ## 7. C++ conventions
 
-- **Standard:** C++20. Use `std::span`, `std::string_view`, designated initialisers, `<format>`, `std::jthread`/`stop_token`. No `std::expected` yet (Apple Clang) — use `luma::Expected<T>` (alias of `tl::expected`).
+- **Standard:** C++20. Use `std::span`, `std::string_view`, designated initialisers, `<format>`. No `std::expected` yet (Apple Clang) — use `luma::Expected<T>` (alias of `tl::expected`). No `std::jthread`/`<stop_token>` yet either (same reason — confirmed by a real CI build failure on Xcode 16's libc++, P1.7) — use plain `std::thread` + an atomic shutdown flag/condition variable instead.
 - **Naming:** `PascalCase` types, `camelCase` functions and variables, `m_` prefix for private members, `k` prefix for constants (`kMaxPreviewPixels`), `UPPER_SNAKE` only for macros (avoid macros). Files match the primary type: `JobScheduler.h/.cpp`.
 - **Headers:** `#pragma once`; include what you use (`misc-include-cleaner` runs in lint); forward-declare in headers where possible; keep OpenCV/LibRaw/ORT headers **out of public core headers** (use pimpl or opaque handles) so `luma_ui` compiles fast and stays decoupled.
 - **Ownership:** `std::unique_ptr` by default, `std::shared_ptr<const T>` for results crossing threads, raw pointers/references for non-owning parameters. No `new`/`delete`.
