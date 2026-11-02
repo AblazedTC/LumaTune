@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 
 namespace luma {
 
@@ -54,6 +55,23 @@ struct ClaheParams {
     int tilesX{8};
     int tilesY{8};
     bool bypass{false}; // on by default - matches V1's always-on CLAHE
+};
+
+// PLAN.md §6.2's full aggregate also lists ExposureParams, AdaptiveParams,
+// and LearnedParams - V2/V3/V4 features (RAW exposure, adaptive stage
+// selection, learned stages) with no implementation yet, so they're left
+// out here rather than added as empty placeholders. Add each as its own
+// stage lands. `schemaVersion` matches the documented contract (JSON
+// preset/batch/training-label serialisation, PLAN.md §6.2) even though
+// that serialisation doesn't exist yet - it's a single data field, not
+// infrastructure, so there's nothing to defer building.
+struct Params {
+    WhiteBalanceParams wb;
+    LevelsParams levels;
+    ClaheParams clahe;
+    CurveParams curve;
+    SaturationParams saturation;
+    std::uint32_t schemaVersion{2};
 };
 
 } // namespace luma

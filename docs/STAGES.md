@@ -34,10 +34,19 @@ header as a programmer error, not a recoverable one (same reasoning as `WhiteBal
 **Golden-set entries:** `ToLinear`/`Encode`/`WhiteBalance`/`autoLevels`/`clahe`/`curve`/
 `saturation` don't have a `tests/golden/` entry of their own yet. T-3 (golden images, PLAN.md
 §11) is a *full-pipeline* legacy-parity comparison — there's no legacy equivalent for an isolated
-intermediate stage's output (and `curve` has no legacy equivalent at all), and the first point
-where a real pipeline chain (and therefore a meaningful golden comparison) exists is P1.6. `clahe`
-gets its DR-9 parity check a different way in the meantime: `ClaheTest.cpp` compares directly
-against `cv::createCLAHE` (which legacy's `cv2.createCLAHE` wraps) rather than waiting for a
-golden fixture. Once P1.6 lands, this row should be revisited.
+intermediate stage's output (and `curve` has no legacy equivalent at all). `src/core/engine/
+Pipeline.cpp` (P1.6) now runs a real chain end-to-end, but the T-3 fixtures/legacy-comparison
+harness itself (12 images × 4 param sets, PSNR/ΔE00 against checked-in legacy-generated
+expected outputs) is still a separate, pending follow-up — see PLAN.md's P1.6 row. `clahe` gets
+its DR-9 parity check a different way in the meantime: `ClaheTest.cpp` compares directly against
+`cv::createCLAHE` (which legacy's `cv2.createCLAHE` wraps) rather than waiting for a golden
+fixture.
+
+**Pipeline orchestration:** `src/core/engine/Pipeline.h` (`runPipeline`) chains ToLinear ->
+WhiteBalance -> Encode -> ToLab -> AutoLevels -> Clahe -> Curve -> Saturation -> FromLab
+(PLAN.md §7.2) and assembles the `Diagnostics` aggregate (per-stage `StageTiming`, `lumaBefore`/
+`lumaAfter`/`rgbAfter` 256-bin histograms). It isn't itself a "stage" (no row above) - it's the
+engine's orchestrator, consistent with PLAN.md §7. RAW-only `Exposure` (V2) and the
+adaptive/learned stage overrides (V3/V4) aren't wired in since they don't exist yet.
 
 **Benchmarks:** see `tests/bench/StageBench.cpp`.

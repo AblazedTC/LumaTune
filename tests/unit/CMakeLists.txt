@@ -1,6 +1,7 @@
 find_package(Catch2 CONFIG REQUIRED)
 
 add_executable(luma_unit_tests
+    engine/PipelineTest.cpp
     image/PixelFormatTest.cpp
     image/ImageBufferTest.cpp
     image/BufferPoolTest.cpp

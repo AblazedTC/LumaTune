@@ -6,6 +6,7 @@
 
 #include <opencv2/core.hpp>
 
+#include "engine/Pipeline.h"
 #include "image/BufferPool.h"
 #include "stages/classical/AutoLevels.h"
 #include "stages/classical/Clahe.h"
@@ -107,3 +108,13 @@ static void BM_Clahe(benchmark::State& state) {
     }
 }
 BENCHMARK(BM_Clahe);
+
+static void BM_Pipeline(benchmark::State& state) {
+    luma::ImageBuffer image = makeBenchImage(luma::Transfer::sRGB);
+    luma::Params params;
+    for (auto _ : state) {
+        auto result = luma::runPipeline(image, params);
+        benchmark::DoNotOptimize(result);
+    }
+}
+BENCHMARK(BM_Pipeline);
