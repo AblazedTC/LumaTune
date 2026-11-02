@@ -6,3 +6,4 @@ add_executable(luma_bench
 
 target_link_libraries(luma_bench PRIVATE luma_core benchmark::benchmark benchmark::benchmark_main)
 luma_set_warnings(luma_bench)
+luma_apply_sanitizers(luma_bench)
