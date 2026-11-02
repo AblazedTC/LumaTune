@@ -7,7 +7,17 @@
 
 namespace luma {
 
-enum class ColorError { IccParseFailed, IccTransformFailed };
+// ponytail: one error enum for "this input isn't valid for a colour/domain-
+// sensitive operation", shared by Transforms, ToLinear, Encode, and
+// WhiteBalance, rather than a StageError per stage - revisit if the set of
+// stages needing this grows enough that the shared enum stops making sense.
+enum class ColorError {
+    IccParseFailed,
+    IccTransformFailed,
+    WrongTransfer,
+    UnsupportedPrimaries,
+    UnsupportedFormat
+};
 
 // Per-channel sRGB OETF/EOTF (IEC 61966-2-1) on a single value in [0,1].
 // Free functions so the math is unit-testable without OpenCV; round-trip

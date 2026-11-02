@@ -7,6 +7,9 @@ add_executable(luma_unit_tests
     image/TransformsTest.cpp
     io/DecoderTest.cpp
     io/EncoderTest.cpp
+    stages/WhiteBalanceTest.cpp
+    stages/ToLinearTest.cpp
+    stages/EncodeTest.cpp
 )
 
 target_link_libraries(luma_unit_tests PRIVATE luma_core Catch2::Catch2WithMain)

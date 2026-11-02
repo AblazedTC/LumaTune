@@ -8,6 +8,9 @@ add_library(luma_core STATIC
     image/Transforms.cpp
     io/StdDecoder.cpp
     io/Encoder.cpp
+    stages/classical/ToLinear.cpp
+    stages/classical/Encode.cpp
+    stages/classical/WhiteBalance.cpp
 )
 
 target_include_directories(luma_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
