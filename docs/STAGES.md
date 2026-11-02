@@ -32,15 +32,15 @@ header as a programmer error, not a recoverable one (same reasoning as `WhiteBal
 `Expected`-returning check, inverted: there, `PixelFormat` *is* caller-controlled).
 
 **Golden-set entries:** `ToLinear`/`Encode`/`WhiteBalance`/`autoLevels`/`clahe`/`curve`/
-`saturation` don't have a `tests/golden/` entry of their own yet. T-3 (golden images, PLAN.md
-§11) is a *full-pipeline* legacy-parity comparison — there's no legacy equivalent for an isolated
-intermediate stage's output (and `curve` has no legacy equivalent at all). `src/core/engine/
-Pipeline.cpp` (P1.6) now runs a real chain end-to-end, but the T-3 fixtures/legacy-comparison
-harness itself (12 images × 4 param sets, PSNR/ΔE00 against checked-in legacy-generated
-expected outputs) is still a separate, pending follow-up — see PLAN.md's P1.6 row. `clahe` gets
-its DR-9 parity check a different way in the meantime: `ClaheTest.cpp` compares directly against
-`cv::createCLAHE` (which legacy's `cv2.createCLAHE` wraps) rather than waiting for a golden
-fixture.
+`saturation` don't have a `tests/golden/` entry of their own — T-3 (PLAN.md §11) is a
+*full-pipeline* comparison, not a per-stage one (there's no legacy equivalent for an isolated
+intermediate stage's output, and `curve` has no legacy equivalent at all). `tests/golden/
+GoldenTest.cpp` (P1.6) runs the real `runPipeline` chain against all 12 fixtures × 4 param sets
+and checks PSNR/mean-ΔE00 against the checked-in legacy-generated expected images for 8 of
+them — see PLAN.md's T-3 row for the measured tolerance and why 4 fixtures (the 3 color-cast
+ones plus the ICC one) are smoke-checked only. `clahe` additionally gets its own DR-9 parity
+check: `ClaheTest.cpp` compares directly against `cv::createCLAHE` (which legacy's
+`cv2.createCLAHE` wraps).
 
 **Pipeline orchestration:** `src/core/engine/Pipeline.h` (`runPipeline`) chains ToLinear ->
 WhiteBalance -> Encode -> ToLab -> AutoLevels -> Clahe -> Curve -> Saturation -> FromLab

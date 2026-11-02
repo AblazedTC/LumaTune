@@ -21,6 +21,7 @@ add_subdirectory(src/core)
 if(LUMA_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests/unit)
+    add_subdirectory(tests/golden)
 endif()
 
 if(LUMA_BUILD_BENCH)
