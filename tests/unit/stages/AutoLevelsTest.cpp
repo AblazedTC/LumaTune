@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <vector>
 
 #include <opencv2/core.hpp>
@@ -35,7 +36,7 @@ float referencePercentile(const cv::Mat& L, float pct) {
     return static_cast<float>(values[lower] * (1.0 - frac) + values[upper] * frac);
 }
 
-cv::Mat makeLabImage(float loL, float hiL, int seed) {
+cv::Mat makeLabImage(float loL, float hiL, std::uint64_t seed) {
     cv::Mat lab(32, 32, CV_32FC3);
     cv::RNG rng(seed);
     rng.fill(lab, cv::RNG::UNIFORM, cv::Scalar(loL, -10.0, -10.0), cv::Scalar(hiL, 10.0, 10.0));
