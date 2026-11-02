@@ -18,6 +18,7 @@ add_library(luma_core STATIC
     stages/classical/Saturation.cpp
     engine/Pipeline.cpp
     engine/JobScheduler.cpp
+    engine/PreviewPolicy.cpp
 )
 
 target_include_directories(luma_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
