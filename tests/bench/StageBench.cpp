@@ -7,7 +7,10 @@
 #include <opencv2/core.hpp>
 
 #include "image/BufferPool.h"
+#include "stages/classical/AutoLevels.h"
+#include "stages/classical/Curve.h"
 #include "stages/classical/Encode.h"
+#include "stages/classical/Saturation.h"
 #include "stages/classical/ToLinear.h"
 #include "stages/classical/WhiteBalance.h"
 
@@ -23,6 +26,13 @@ luma::ImageBuffer makeBenchImage(luma::Transfer transfer) {
     cv::RNG rng(1);
     rng.fill(image.mat(), cv::RNG::UNIFORM, 0.0, 1.0);
     return image;
+}
+
+cv::Mat makeBenchLab() {
+    cv::Mat lab(kBenchSize, kBenchSize, CV_32FC3);
+    cv::RNG rng(1);
+    rng.fill(lab, cv::RNG::UNIFORM, cv::Scalar(0.0, -40.0, -40.0), cv::Scalar(100.0, 40.0, 40.0));
+    return lab;
 }
 
 } // namespace
@@ -54,3 +64,35 @@ static void BM_WhiteBalance(benchmark::State& state) {
     }
 }
 BENCHMARK(BM_WhiteBalance);
+
+static void BM_AutoLevels(benchmark::State& state) {
+    cv::Mat lab = makeBenchLab();
+    luma::LevelsParams params;
+    for (auto _ : state) {
+        auto result = luma::autoLevels(lab, params);
+        benchmark::DoNotOptimize(result);
+    }
+}
+BENCHMARK(BM_AutoLevels);
+
+static void BM_Curve(benchmark::State& state) {
+    cv::Mat lab = makeBenchLab();
+    luma::CurveParams params;
+    params.bypass = false;
+    for (auto _ : state) {
+        auto result = luma::curve(lab, params);
+        benchmark::DoNotOptimize(result);
+    }
+}
+BENCHMARK(BM_Curve);
+
+static void BM_Saturation(benchmark::State& state) {
+    cv::Mat lab = makeBenchLab();
+    luma::SaturationParams params;
+    params.bypass = false;
+    for (auto _ : state) {
+        auto result = luma::saturation(lab, params);
+        benchmark::DoNotOptimize(result);
+    }
+}
+BENCHMARK(BM_Saturation);
