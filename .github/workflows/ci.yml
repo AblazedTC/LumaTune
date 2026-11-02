@@ -108,3 +108,52 @@ jobs:
           probe="build/${{ matrix.preset }}/opencl_probe"
           [ -f "${probe}.exe" ] && probe="${probe}.exe"
           "${probe}"
+
+  luma-py:
+    name: luma_py (Linux, LUMA_BUILD_PY=ON)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Set up Python (with development headers)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install OpenCL runtime
+        run: sudo apt-get update && sudo apt-get install -y ocl-icd-opencl-dev pocl-opencl-icd
+
+      - name: Install autotools build deps for vcpkg's autotools-based ports
+        run: sudo apt-get install -y autoconf autoconf-archive automake libtool
+
+      - name: Bootstrap vcpkg
+        shell: bash
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git "${{ github.workspace }}/vcpkg"
+          "${{ github.workspace }}/vcpkg/bootstrap-vcpkg.sh"
+          echo "VCPKG_ROOT=${{ github.workspace }}/vcpkg" >> "$GITHUB_ENV"
+
+      - name: Export GHA cache credentials for vcpkg
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Enable vcpkg binary caching
+        shell: bash
+        run: echo "VCPKG_BINARY_SOURCES=clear;x-gha,readwrite" >> "$GITHUB_ENV"
+
+      # PLAN.md P1.8: just verifies bindings/python/ compiles and links
+      # against nanobind/Python via the normal CMake/vcpkg flow this repo
+      # already relies on everywhere else - not the pip-installable
+      # packaging path (pyproject.toml/scikit-build-core), which is a
+      # separate, still-pending follow-up with its own CI coverage.
+      - name: Configure (LUMA_BUILD_PY=ON)
+        run: cmake --preset linux-gcc-release -DLUMA_BUILD_PY=ON -DLUMA_BUILD_BENCH=OFF
+
+      - name: Build luma_py
+        run: cmake --build --preset linux-gcc-release --target luma_py
