@@ -8,6 +8,7 @@
 
 #include "image/BufferPool.h"
 #include "stages/classical/AutoLevels.h"
+#include "stages/classical/Clahe.h"
 #include "stages/classical/Curve.h"
 #include "stages/classical/Encode.h"
 #include "stages/classical/Saturation.h"
@@ -96,3 +97,13 @@ static void BM_Saturation(benchmark::State& state) {
     }
 }
 BENCHMARK(BM_Saturation);
+
+static void BM_Clahe(benchmark::State& state) {
+    cv::Mat lab = makeBenchLab();
+    luma::ClaheParams params;
+    for (auto _ : state) {
+        auto result = luma::clahe(lab, params);
+        benchmark::DoNotOptimize(result);
+    }
+}
+BENCHMARK(BM_Clahe);

@@ -12,6 +12,7 @@ add_library(luma_core STATIC
     stages/classical/Encode.cpp
     stages/classical/WhiteBalance.cpp
     stages/classical/AutoLevels.cpp
+    stages/classical/Clahe.cpp
     stages/classical/Curve.cpp
     stages/classical/Saturation.cpp
 )

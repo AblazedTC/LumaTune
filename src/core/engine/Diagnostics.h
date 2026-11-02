@@ -7,10 +7,10 @@
 
 namespace luma {
 
-// PLAN.md §6.3. The full Diagnostics aggregate (with ClaheDiag, histograms,
-// timings, ...) lands in P1.6 when the engine actually has stages to
-// aggregate diagnostics from. Curve/Saturation have no diag struct here,
-// same reasoning as ToLinear/Encode (docs/STAGES.md): PLAN.md §6.3 doesn't
+// PLAN.md §6.3. The full Diagnostics aggregate (with histograms, timings,
+// ...) lands in P1.6 when the engine actually has stages to aggregate
+// diagnostics from. Curve/Saturation have no diag struct here, same
+// reasoning as ToLinear/Encode (docs/STAGES.md): PLAN.md §6.3 doesn't
 // list one for either, and there's no estimation decision to explain -
 // their own params already say everything there is to say.
 struct WbDiag {
@@ -28,6 +28,13 @@ struct LevelsDiag {
     float inMax{100.f};
     float blackPct{0.5f};
     float whitePct{99.5f};
+};
+
+struct ClaheDiag {
+    float clipLimit{2.0f};
+    int tilesX{8};
+    int tilesY{8};
+    int bins{1024};
 };
 
 } // namespace luma
