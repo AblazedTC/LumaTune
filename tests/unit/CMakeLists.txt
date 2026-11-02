@@ -11,6 +11,7 @@ add_executable(luma_unit_tests
     stages/ToLinearTest.cpp
     stages/EncodeTest.cpp
     stages/AutoLevelsTest.cpp
+    stages/ClaheTest.cpp
     stages/CurveTest.cpp
     stages/SaturationTest.cpp
 )

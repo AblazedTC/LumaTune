@@ -43,4 +43,17 @@ struct SaturationParams {
     bool bypass{true}; // off by default - new in the rewrite, not a V1 behaviour
 };
 
+// PLAN.md DR-9: own float CLAHE. clipLimit/tilesX/tilesY default to
+// legacy's values (legacy/processing/pipeline.py's ProcessingParams:
+// clahe_clip=2.0, clahe_tile=8). bins=256 reproduces OpenCV's/legacy's
+// 8-bit semantics for parity; 1024 is the shipping default (banding-free
+// on 16-bit export, PLAN.md §6.3).
+struct ClaheParams {
+    int bins{1024};
+    float clipLimit{2.0f};
+    int tilesX{8};
+    int tilesY{8};
+    bool bypass{false}; // on by default - matches V1's always-on CLAHE
+};
+
 } // namespace luma
