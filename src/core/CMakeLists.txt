@@ -11,6 +11,9 @@ add_library(luma_core STATIC
     stages/classical/ToLinear.cpp
     stages/classical/Encode.cpp
     stages/classical/WhiteBalance.cpp
+    stages/classical/AutoLevels.cpp
+    stages/classical/Curve.cpp
+    stages/classical/Saturation.cpp
 )
 
 target_include_directories(luma_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

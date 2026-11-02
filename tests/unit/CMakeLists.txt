@@ -10,6 +10,9 @@ add_executable(luma_unit_tests
     stages/WhiteBalanceTest.cpp
     stages/ToLinearTest.cpp
     stages/EncodeTest.cpp
+    stages/AutoLevelsTest.cpp
+    stages/CurveTest.cpp
+    stages/SaturationTest.cpp
 )
 
 target_link_libraries(luma_unit_tests PRIVATE luma_core Catch2::Catch2WithMain)
