@@ -1,0 +1,39 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "nanobind>=2.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "luma_py"
+version = "0.1.0"
+requires-python = ">=3.10"
+
+# Points at the repo root, not this directory: luma_py links luma_core,
+# and the root CMakeLists.txt is what knows how to build it (this is the
+# same CMake graph the plain `cmake --preset ... -DLUMA_BUILD_PY=ON`
+# build already uses, proven in CI - this just drives it through
+# scikit-build-core instead of a preset). Only bindings/python/
+# CMakeLists.txt's own install() rule produces wheel content; the rest of
+# the root project (luma_core, tests, opencl_probe) has none, so nothing
+# else ends up in the wheel.
+#
+# Requires CMAKE_TOOLCHAIN_FILE set in the environment (e.g.
+# `export CMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"`)
+# before `pip install -e .` - scikit-build-core's cmake.define has no
+# documented env-var templating to derive it from VCPKG_ROOT here, and
+# CMake itself already honours that env var as a toolchain default.
+#
+# Also requires the `pip install` itself to run under a Python whose
+# MAJOR.MINOR matches vcpkg's bundled python3 port (AGENTS.md §3,
+# bindings/python/CMakeLists.txt's comment have the full story) - vcpkg's
+# python3 port always substitutes its own headers/libs when CMake asks
+# for Python's Development component, so the built module's ABI is
+# vcpkg's, not necessarily this interpreter's, unless they already match.
+[tool.scikit-build]
+cmake.source-dir = "../.."
+cmake.build-type = "Release"
+wheel.packages = []
+
+[tool.scikit-build.cmake.define]
+LUMA_BUILD_PY = "ON"
+LUMA_BUILD_TESTS = "OFF"
+LUMA_BUILD_BENCH = "OFF"

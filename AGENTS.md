@@ -37,7 +37,7 @@ Section 10 covers working on it.
 - **CMake ≥ 3.28**, **Ninja**, **git** with **git-lfs** (`git lfs install` once).
 - **vcpkg** cloned anywhere; export `VCPKG_ROOT`. The manifest (`vcpkg.json`) installs OpenCV (with OpenCL), LibRaw, lcms2, spdlog, nlohmann-json, tl-expected, Catch2, Google Benchmark automatically on first configure. EXIF/ICC metadata is read via OpenCV's own `imreadWithMetadata` (ADR-0007) — no separate EXIF library. **ONNX Runtime is sourced per platform** (PLAN.md DR-10): official DirectML package on Windows, official arm64 archive on macOS, vcpkg overlay port on Intel Mac, vcpkg on Linux — CMake handles this; do not add `onnxruntime` to the manifest for Windows/macOS.
 - **Qt 6.11.x open-source** (exact patch pinned in `cmake/Qt.cmake`). Install with the official online installer **or** `pip install aqtinstall && aqt install-qt <host> desktop 6.11.x <arch> -m qtshadertools qtimageformats`. Export `QT_ROOT` to the kit dir (e.g. `.../6.11.2/msvc2022_64`). **Do not** install Qt via vcpkg; **do not** use Qt 6.12 LTS (commercial-only).
-- **Python ≥ 3.10** only if you build `luma_py` or work in `ml/`/`tools/`.
+- **Python ≥ 3.10** only if you build `luma_py` or work in `ml/`/`tools/`. **Building `luma_py` specifically needs the exact same MAJOR.MINOR as vcpkg's bundled `python3` port** (currently 3.14.x, pinned by the vcpkg baseline — check what a fresh `vcpkg install nanobind` resolves to if this drifts), not merely a version ≥ 3.10: vcpkg's `python3` port wraps `find_package(Python ...)` and always substitutes its own headers/libs for `Development` components regardless of any `Python_EXECUTABLE` hint (confirmed against vcpkg's own `vcpkg-cmake-wrapper.cmake`, P1.8), so the module is built against vcpkg's Python ABI — the interpreter that will actually `import luma_py` afterwards (including `pip install -e bindings/python`'s own) must be that same minor version, or the import fails. `ml/`/`tools/` have no such constraint.
 
 ### Windows x64
 - Visual Studio 2022 (17.10+) with "Desktop development with C++" (MSVC 19.4x), Windows 10/11 SDK.
@@ -72,8 +72,12 @@ ctest --preset linux-gcc-release -L ui      # sets QT_QPA_PLATFORM=offscreen its
 # Benchmarks (not run by default ctest)
 ./build/<preset>/tests/bench/luma_bench --benchmark_filter=Pipeline
 
-# Python bindings + parity tests
+# Python bindings + parity tests (needs CMAKE_TOOLCHAIN_FILE exported -
+# pyproject.toml has no templating to derive it from VCPKG_ROOT itself -
+# and a Python whose MAJOR.MINOR matches vcpkg's bundled python3 port,
+# see §3's Python bullet)
 cmake --preset linux-gcc-release -DLUMA_BUILD_PY=ON && cmake --build --preset linux-gcc-release
+export CMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
 python -m pip install -e bindings/python && pytest tests/parity -v
 
 # Sanitizer builds (Linux/Clang)
