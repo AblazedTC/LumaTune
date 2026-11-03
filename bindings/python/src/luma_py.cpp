@@ -11,6 +11,7 @@
 // CI build failure, not just docs lore.
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
+#include <nanobind/stl/string.h>
 
 #include <cstddef>
 #include <cstring>
