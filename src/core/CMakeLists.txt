@@ -25,7 +25,12 @@ add_library(luma_core STATIC
 
 target_include_directories(luma_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_features(luma_core PUBLIC cxx_std_20)
-set_target_properties(luma_core PROPERTIES CXX_EXTENSIONS OFF)
+# PIC static-library code links fine into a plain executable too (the
+# ordinary luma_unit_tests/luma_bench/etc. consumers) - it's only required
+# the other direction: luma_py's shared module (bindings/python/) can't
+# link a non-PIC static archive into itself. Always-PIC avoids needing two
+# separate build configurations of the same library for that one consumer.
+set_target_properties(luma_core PROPERTIES CXX_EXTENSIONS OFF POSITION_INDEPENDENT_CODE ON)
 
 target_link_libraries(luma_core
     PUBLIC opencv_core opencv_imgproc opencv_imgcodecs tl::expected Threads::Threads

@@ -28,13 +28,14 @@ if(LUMA_BUILD_BENCH)
     add_subdirectory(tests/bench)
 endif()
 
+if(LUMA_BUILD_PY)
+    add_subdirectory(bindings/python)
+endif()
+
 # PLAN.md P0.4 acceptance check: prove cv::ocl::haveOpenCL() is reachable
 # from this vcpkg baseline on at least one CI runner.
 add_executable(opencl_probe tools/opencl_probe.cpp)
 target_link_libraries(opencl_probe PRIVATE opencv_core opencv_imgcodecs opencv_imgproc)
 luma_set_warnings(opencl_probe)
 
-# luma_ui / lumatune (Qt Quick app) lands in Phase 2 (P2.1); luma_py
-# (nanobind) lands whenever a task actually needs the Python binding.
-# Nothing to add_subdirectory() for it yet (PLAN.md §14) — wiring an
-# empty directory now would just be dead CMake.
+# luma_ui / lumatune (Qt Quick app) lands in Phase 2 (P2.1).
