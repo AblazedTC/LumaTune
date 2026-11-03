@@ -118,10 +118,18 @@ jobs:
       - name: Install Ninja
         uses: seanmiddleditch/gha-setup-ninja@master
 
-      - name: Set up Python (with development headers)
+      # Must match vcpkg's bundled python3 port's MAJOR.MINOR (currently
+      # 3.14.x) exactly, not just satisfy pyproject.toml's >=3.10 floor:
+      # vcpkg's python3 port wraps find_package(Python ...) and always
+      # substitutes its OWN headers/libs for Development components
+      # (bindings/python/CMakeLists.txt's comment has the full story), so
+      # luma_py is built against vcpkg's Python ABI regardless of which
+      # interpreter actually runs this job - this must be the same minor
+      # version, or the built module won't import into it afterwards.
+      - name: Set up Python (matching vcpkg's bundled python3 port)
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.14"
 
       - name: Install OpenCL runtime
         run: sudo apt-get update && sudo apt-get install -y ocl-icd-opencl-dev pocl-opencl-icd
@@ -167,10 +175,18 @@ jobs:
       - name: Install Ninja
         uses: seanmiddleditch/gha-setup-ninja@master
 
-      - name: Set up Python (with development headers)
+      # Must match vcpkg's bundled python3 port's MAJOR.MINOR (currently
+      # 3.14.x) exactly, not just satisfy pyproject.toml's >=3.10 floor:
+      # vcpkg's python3 port wraps find_package(Python ...) and always
+      # substitutes its OWN headers/libs for Development components
+      # (bindings/python/CMakeLists.txt's comment has the full story), so
+      # luma_py is built against vcpkg's Python ABI regardless of which
+      # interpreter actually runs this job - this must be the same minor
+      # version, or the built module won't import into it afterwards.
+      - name: Set up Python (matching vcpkg's bundled python3 port)
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.14"
 
       - name: Install OpenCL runtime
         run: sudo apt-get update && sudo apt-get install -y ocl-icd-opencl-dev pocl-opencl-icd

@@ -1,17 +1,16 @@
-# Deliberately NOT requesting the Interpreter component: vcpkg's own
-# python3 port wraps find_package(Python ...) and unconditionally
-# substitutes ITS bundled Python's headers/libs for Development.Module,
-# regardless of any Python_EXECUTABLE/Python_ROOT_DIR hint (confirmed
-# against vcpkg's actual vcpkg-cmake-wrapper.cmake for python3, not
-# assumed). When scikit-build-core also pins Interpreter to the real
-# pip-install environment's Python (a different, non-vcpkg version),
-# FindPackageHandleStandardArgs's version cross-check between the two
-# fails - a real CI failure, not a hypothetical. Dropping Interpreter
-# avoids that cross-check entirely; scikit-build-core (or the plain
-# cmake --preset ... -DLUMA_BUILD_PY=ON flow) already controls which
-# Python actually runs/imports the module, so nanobind_add_module has
-# no real need for CMake to separately "find" that same interpreter.
-find_package(Python 3.10 COMPONENTS Development.Module REQUIRED)
+# nanobind's own CMake config hard-requires exactly this invocation
+# ("You must invoke 'find_package(Python COMPONENTS Interpreter
+# Development REQUIRED)' prior to including nanobind" - confirmed by a
+# real CI error, not optional). vcpkg's python3 port wraps find_package
+# (Python ...) and, for Development (and Development.Embed), always
+# substitutes ITS OWN bundled Python's headers/libs/interpreter
+# (NO_DEFAULT_PATH into vcpkg's own tree), ignoring any externally-hinted
+# Python_EXECUTABLE - confirmed against vcpkg's actual vcpkg-cmake-
+# wrapper.cmake for python3. That's fine and self-consistent *if* the
+# interpreter that will actually import the built module afterwards is
+# that same vcpkg-bundled version - see the CI workflow's comment next to
+# its actions/setup-python step for how that's kept in sync.
+find_package(Python 3.10 COMPONENTS Interpreter Development REQUIRED)
 find_package(nanobind CONFIG REQUIRED)
 
 nanobind_add_module(luma_py src/luma_py.cpp)

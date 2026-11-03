@@ -21,6 +21,13 @@ requires-python = ">=3.10"
 # before `pip install -e .` - scikit-build-core's cmake.define has no
 # documented env-var templating to derive it from VCPKG_ROOT here, and
 # CMake itself already honours that env var as a toolchain default.
+#
+# Also requires the `pip install` itself to run under a Python whose
+# MAJOR.MINOR matches vcpkg's bundled python3 port (AGENTS.md §3,
+# bindings/python/CMakeLists.txt's comment have the full story) - vcpkg's
+# python3 port always substitutes its own headers/libs when CMake asks
+# for Python's Development component, so the built module's ABI is
+# vcpkg's, not necessarily this interpreter's, unless they already match.
 [tool.scikit-build]
 cmake.source-dir = "../.."
 cmake.build-type = "Release"
