@@ -1,3 +1,5 @@
+set(CMAKE_AUTOMOC ON)
+
 qt_add_executable(lumatune main.cpp)
 
 qt_add_qml_module(lumatune
