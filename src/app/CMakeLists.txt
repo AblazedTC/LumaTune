@@ -2,6 +2,11 @@ set(CMAKE_AUTOMOC ON)
 
 qt_add_executable(lumatune main.cpp)
 
+# New module, no legacy qrc-based resource path to preserve - opt into
+# Qt's current default (QTP0001) instead of leaving CI printing an author
+# warning on every configure.
+qt_policy(SET QTP0001 NEW)
+
 qt_add_qml_module(lumatune
     URI LumaTune
     VERSION 1.0
