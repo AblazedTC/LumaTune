@@ -21,6 +21,7 @@ add_library(luma_core STATIC
     engine/JobScheduler.cpp
     engine/PreviewPolicy.cpp
     engine/ParamsJson.cpp
+    engine/GpuProbe.cpp
 )
 
 target_include_directories(luma_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

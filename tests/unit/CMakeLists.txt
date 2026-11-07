@@ -1,6 +1,7 @@
 find_package(Catch2 CONFIG REQUIRED)
 
 add_executable(luma_unit_tests
+    engine/GpuProbeTest.cpp
     engine/JobSchedulerTest.cpp
     engine/ParamsJsonTest.cpp
     engine/PipelineTest.cpp
