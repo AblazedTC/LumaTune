@@ -31,6 +31,40 @@ void applyTransferInPlace(cv::Mat& image, float (*transfer)(float)) {
     }
 }
 
+// Composed-ops (no per-pixel loop) piecewise sRGB EOTF/OETF, shared by the
+// cv::Mat and cv::UMat overloads below - cv::compare/cv::divide/cv::pow/
+// Mat::copyTo(mask) are all T-API-transparent, so MatT=cv::UMat never
+// touches host memory. RGB_F32 (3-channel) only; see Transforms.h.
+template <class MatT>
+void toLinearGeneric(MatT& image) {
+    CV_Assert(image.depth() == CV_32F && image.channels() == 3);
+    MatT mask;
+    cv::compare(image, 0.04045, mask, cv::CMP_LE);
+    MatT low;
+    cv::divide(image, 12.92, low);
+    MatT high;
+    cv::add(image, 0.055, high);
+    cv::divide(high, 1.055, high);
+    cv::pow(high, 2.4, high);
+    high.copyTo(image);
+    low.copyTo(image, mask);
+}
+
+template <class MatT>
+void toSrgbGeneric(MatT& image) {
+    CV_Assert(image.depth() == CV_32F && image.channels() == 3);
+    MatT mask;
+    cv::compare(image, 0.0031308, mask, cv::CMP_LE);
+    MatT low;
+    cv::multiply(image, 12.92, low);
+    MatT high;
+    cv::pow(image, 1.0 / 2.4, high);
+    cv::multiply(high, 1.055, high);
+    cv::subtract(high, 0.055, high);
+    high.copyTo(image);
+    low.copyTo(image, mask);
+}
+
 // RAII so an early return (parse/transform failure) can't leak an lcms2 handle.
 template <class T, void (*Close)(T)>
 class LcmsHandle {
@@ -63,6 +97,9 @@ using TransformHandle = LcmsHandle<cmsHTRANSFORM, cmsDeleteTransform>;
 void toLinear(cv::Mat& image) { applyTransferInPlace(image, srgbToLinear); }
 void toSrgb(cv::Mat& image) { applyTransferInPlace(image, linearToSrgb); }
 
+void toLinear(cv::UMat& image) { toLinearGeneric(image); }
+void toSrgb(cv::UMat& image) { toSrgbGeneric(image); }
+
 // NOTE: cv::cvtColor's Lab conversion only has CV_8U and CV_32F kernels
 // (confirmed against opencv/modules/imgproc/src/color_lab.cpp) - CV_64F
 // throws. An earlier version of this code tried CV_64F for extra
@@ -79,6 +116,14 @@ cv::Mat labToRgb(const cv::Mat& lab) {
     cv::Mat rgb;
     cv::cvtColor(lab, rgb, cv::COLOR_Lab2RGB);
     return rgb;
+}
+
+void rgbToLab(cv::InputArray srgbRgb, cv::OutputArray lab) {
+    cv::cvtColor(srgbRgb, lab, cv::COLOR_RGB2Lab);
+}
+
+void labToRgb(cv::InputArray lab, cv::OutputArray rgb) {
+    cv::cvtColor(lab, rgb, cv::COLOR_Lab2RGB);
 }
 
 Expected<void, ColorError> iccToSrgb(cv::Mat& image, const IccProfile& icc) {

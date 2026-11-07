@@ -79,6 +79,50 @@ TEST_CASE("Transforms/rgbToLab-labToRgb round trip is within 5e-3", "[unit][imag
     REQUIRE(maxAbsDiff(image, back) < 5e-3);
 }
 
+TEST_CASE("Transforms/UMat toLinear/toSrgb agree with the cv::Mat overloads within 1e-3",
+          "[unit][image][transforms][umat]") {
+    // PLAN.md P1.10 acceptance: "same golden results on GPU (tolerance
+    // 1e-3)". cv::UMat ops are correct even with no real OpenCL device
+    // (OpenCV falls back internally) - this is a meaningful check on every
+    // CI platform, not something that needs gating on haveOpenCL().
+    cv::Mat hostImage(16, 16, CV_32FC3);
+    cv::RNG rng(99);
+    rng.fill(hostImage, cv::RNG::UNIFORM, 0.0, 1.0);
+
+    cv::Mat hostLinear = hostImage.clone();
+    luma::toLinear(hostLinear);
+    cv::Mat hostBack = hostLinear.clone();
+    luma::toSrgb(hostBack);
+
+    cv::UMat deviceImage;
+    hostImage.copyTo(deviceImage);
+    luma::toLinear(deviceImage);
+    REQUIRE(maxAbsDiff(hostLinear, deviceImage.getMat(cv::ACCESS_READ)) < 1e-3);
+
+    luma::toSrgb(deviceImage);
+    REQUIRE(maxAbsDiff(hostBack, deviceImage.getMat(cv::ACCESS_READ)) < 1e-3);
+}
+
+TEST_CASE("Transforms/InputArray rgbToLab/labToRgb agree with the cv::Mat overloads",
+          "[unit][image][transforms][umat]") {
+    cv::Mat hostImage(16, 16, CV_32FC3);
+    cv::RNG rng(5);
+    rng.fill(hostImage, cv::RNG::UNIFORM, 0.0, 1.0);
+
+    const cv::Mat expectedLab = luma::rgbToLab(hostImage);
+    const cv::Mat expectedBack = luma::labToRgb(expectedLab);
+
+    cv::UMat deviceImage;
+    hostImage.copyTo(deviceImage);
+    cv::UMat deviceLab;
+    luma::rgbToLab(deviceImage, deviceLab);
+    REQUIRE(maxAbsDiff(expectedLab, deviceLab.getMat(cv::ACCESS_READ)) < 1e-3);
+
+    cv::UMat deviceBack;
+    luma::labToRgb(deviceLab, deviceBack);
+    REQUIRE(maxAbsDiff(expectedBack, deviceBack.getMat(cv::ACCESS_READ)) < 1e-3);
+}
+
 TEST_CASE("Transforms/iccToSrgb is a no-op on an empty profile", "[unit][image][transforms]") {
     cv::Mat image(2, 2, CV_32FC3, cv::Scalar(0.4f, 0.5f, 0.6f));
     const cv::Mat original = image.clone();

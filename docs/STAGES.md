@@ -49,4 +49,18 @@ WhiteBalance -> Encode -> ToLab -> AutoLevels -> Clahe -> Curve -> Saturation ->
 engine's orchestrator, consistent with PLAN.md §7. RAW-only `Exposure` (V2) and the
 adaptive/learned stage overrides (V3/V4) aren't wired in since they don't exist yet.
 
+**UMat / GPU path (PLAN.md DR-6/P1.10):** `toLinear`/`toSrgb` (`cv::UMat` overloads) and
+`rgbToLab`/`labToRgb` (`cv::InputArray`/`cv::OutputArray` overloads) in `Transforms.h` are
+device-transparent - verified to agree with their `cv::Mat` counterparts within 1e-3
+(`TransformsTest.cpp`), satisfying P1.10's "same golden results on GPU" half. The other half
+("end-to-end bench ≥ 1.3× on reference iGPU, else GPU defaults Off") needs a physical reference
+machine this environment doesn't have (PLAN.md §11.4: judged there, never on a CI runner) - not
+measured, deliberately deferred. `src/core/engine/GpuProbe.h` (`probeGpuWorthwhile`) implements
+the startup-probe *mechanism* DR-6 describes (timed 1 MP `cvtColor`+`resize` on `UMat` vs `Mat`,
+including upload/download); it's pure/stateless and doesn't cache or persist a session-wide
+`gpu` flag, since there's no `Settings`/session-lifecycle struct yet for it to live in (Phase 2).
+Wiring these into `Pipeline.cpp`/`WhiteBalance`/`AutoLevels`/`Clahe` for an actual device-resident
+end-to-end chain (not just correctness-verified building blocks) is a separate, still-pending
+follow-up - `Clahe` in particular is explicitly a CPU-only chain break by design (DR-9).
+
 **Benchmarks:** see `tests/bench/StageBench.cpp`.
