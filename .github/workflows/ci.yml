@@ -228,3 +228,81 @@ jobs:
 
       - name: Run T-5 parity suite
         run: pytest tests/parity -v
+
+  luma-ui:
+    # P2.1 chunk 1: first-ever Qt install in this repo's CI. Its own
+    # isolated, Linux-only job (same reasoning as luma-py above) so a
+    # toolchain failure here can't block the stable core build matrix
+    # while LUMA_BUILD_UI defaults OFF. Windows/macOS verification is a
+    # follow-up once this is proven (PLAN.md P2.1 row).
+    name: lumatune (Linux, LUMA_BUILD_UI=ON)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@master
+
+      # Qt runtime/dev packages Qt itself doesn't ship (AGENTS.md §3 Linux
+      # prerequisites).
+      - name: Install Qt runtime deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev libxkbcommon-dev libxcb-cursor0 \
+            libfontconfig1-dev libfreetype6-dev libwayland-dev
+
+      # AGENTS.md §3: pinned 6.11.x, installed via aqtinstall (this action
+      # wraps it) rather than vcpkg. Sets Qt6_DIR for the Configure step
+      # below.
+      - name: Install Qt (AGENTS.md-pinned 6.11.x)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.11.2"
+          modules: "qtshadertools qtimageformats"
+
+      - name: Install OpenCL runtime
+        run: sudo apt-get install -y ocl-icd-opencl-dev pocl-opencl-icd
+
+      - name: Install autotools build deps for vcpkg's autotools-based ports
+        run: sudo apt-get install -y autoconf autoconf-archive automake libtool
+
+      - name: Bootstrap vcpkg
+        shell: bash
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git "${{ github.workspace }}/vcpkg"
+          "${{ github.workspace }}/vcpkg/bootstrap-vcpkg.sh"
+          echo "VCPKG_ROOT=${{ github.workspace }}/vcpkg" >> "$GITHUB_ENV"
+
+      - name: Export GHA cache credentials for vcpkg
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Enable vcpkg binary caching
+        shell: bash
+        run: echo "VCPKG_BINARY_SOURCES=clear;x-gha,readwrite" >> "$GITHUB_ENV"
+
+      - name: Configure (LUMA_BUILD_UI=ON)
+        run: cmake --preset linux-gcc-release -DLUMA_BUILD_UI=ON -DLUMA_BUILD_BENCH=OFF
+
+      - name: Build lumatune
+        run: cmake --build --preset linux-gcc-release --target lumatune
+
+      - name: Check --version exits 0 (PLAN.md P2.1 acceptance)
+        run: ./build/linux-gcc-release/src/app/lumatune --version
+
+      # PLAN.md P2.1 acceptance: "launches and shows an empty window" -
+      # QT_QPA_PLATFORM=offscreen lets this run on a headless CI runner
+      # (AGENTS.md §4's documented pattern for the `ui` ctest label).
+      - name: Smoke-test launch (offscreen)
+        run: |
+          QT_QPA_PLATFORM=offscreen ./build/linux-gcc-release/src/app/lumatune &
+          pid=$!
+          sleep 2
+          if ! kill -0 "$pid" 2>/dev/null; then
+            echo "lumatune exited before the smoke test finished"
+            exit 1
+          fi
+          kill "$pid"
