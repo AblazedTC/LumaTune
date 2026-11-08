@@ -26,6 +26,13 @@ void RecentFilesModel::addPath(const QString& path) {
     emit pathsChanged();
 }
 
+void RecentFilesModel::addUrl(const QUrl& url) {
+    const QString path = url.toLocalFile();
+    if (!path.isEmpty()) {
+        addPath(path);
+    }
+}
+
 void RecentFilesModel::clear() {
     m_paths.clear();
     save();

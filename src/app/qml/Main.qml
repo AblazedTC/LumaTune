@@ -27,6 +27,7 @@ ApplicationWindow {
                 Instantiator {
                     model: recentFiles.paths
                     MenuItem {
+                        required property string modelData
                         text: modelData
                         onTriggered: recentFiles.addPath(modelData)
                     }
@@ -51,7 +52,7 @@ ApplicationWindow {
         onDropped: (drop) => {
             if (drop.hasUrls) {
                 for (const url of drop.urls) {
-                    recentFiles.addPath(url.toString())
+                    recentFiles.addUrl(url)
                 }
             }
         }

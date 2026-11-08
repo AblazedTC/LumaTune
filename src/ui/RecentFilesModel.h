@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QQmlEngine>
 #include <QStringList>
+#include <QUrl>
 
 namespace luma::ui {
 
@@ -19,6 +20,10 @@ public:
 
     QStringList paths() const;
     Q_INVOKABLE void addPath(const QString& path);
+    // Local-file conversion lives here (not in QML - AGENTS.md §8) so a
+    // dropped file:// URL and a path added any other way end up as the
+    // same string and dedup correctly. No-op if `url` isn't a local file.
+    Q_INVOKABLE void addUrl(const QUrl& url);
     Q_INVOKABLE void clear();
 
 signals:

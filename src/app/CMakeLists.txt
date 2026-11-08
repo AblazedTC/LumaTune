@@ -7,6 +7,11 @@ qt_add_executable(lumatune main.cpp)
 # warning on every configure.
 qt_policy(SET QTP0001 NEW)
 
+# pragma Singleton in Theme.qml declares intent, but the qmldir entry
+# still needs this source property set explicitly - otherwise Main.qml's
+# bare `Theme.background` has no singleton instance to resolve against.
+set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+
 qt_add_qml_module(lumatune
     URI LumaTune
     VERSION 1.0
