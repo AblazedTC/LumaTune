@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstring>
 
+#include <QCoreApplication>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QUrl>
@@ -22,6 +23,10 @@ int main(int argc, char* argv[]) {
     }
 
     QGuiApplication app(argc, argv);
+    // RecentFilesModel's QSettings calls need these to pick a stable
+    // storage location (e.g. the registry key / plist domain).
+    QCoreApplication::setOrganizationName("LumaTune");
+    QCoreApplication::setApplicationName("LumaTune");
 
     QQmlApplicationEngine engine;
     engine.loadFromModule("LumaTune", "Main");

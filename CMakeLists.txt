@@ -42,6 +42,7 @@ endif()
 
 if(LUMA_BUILD_UI)
     include(Qt)
+    add_subdirectory(src/ui)
     add_subdirectory(src/app)
 endif()
 
