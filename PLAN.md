@@ -638,7 +638,7 @@ Timeline assumes one engineer + coding agents; sizes are per §0.
 
 | Task | Deliverable | Acceptance | Size | Deps |
 |---|---|---|---|---|
-| P2.1 | App skeleton: `main.cpp`, QML engine, `Theme.qml`, window, menus, drag-and-drop target, recent files store, `--version` | Launches and shows an empty window on 4 platforms; `lumatune --version` prints and exits 0 | M | P0.4 |
+| P2.1 (chunk 1 landed, Linux-only) | App skeleton: `main.cpp`, QML engine, `Theme.qml`, window, menus, drag-and-drop target, recent files store, `--version` — chunk 1 (Qt toolchain wiring, `cmake/Qt.cmake`, minimal `QQmlApplicationEngine` app, `--version`) is in; `Theme.qml`, menus, drag-and-drop, recent files, and Windows/macOS CI verification are chunk 2 | Launches and shows an empty window on 4 platforms; `lumatune --version` prints and exits 0 | M | P0.4 |
 | P2.2 | `ImageDocument`, `PipelineController` wired to `JobScheduler`; `PreviewItem` with RGBA16F `QSGTexture` | Open fixture → before/after visible; slider → preview < 100 ms on reference machine | L | P1.7, P2.1 |
 | P2.3 | `Controls.qml`/`StageCard.qml` with V1's four sliders + numeric values + reset + bypass toggles | FR-8, FR-11 | M | P2.2 |
 | P2.4 | `HistogramItem` custom-painted; `DiagnosticsModel` readout incl. timings | FR-10, FR-14 (luma only this phase) | M | P2.2 |
