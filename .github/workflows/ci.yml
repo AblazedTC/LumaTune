@@ -298,11 +298,27 @@ jobs:
       # (AGENTS.md §4's documented pattern for the `ui` ctest label).
       - name: Smoke-test launch (offscreen)
         run: |
-          QT_QPA_PLATFORM=offscreen ./build/linux-gcc-release/src/app/lumatune &
+          QT_QPA_PLATFORM=offscreen ./build/linux-gcc-release/src/app/lumatune > lumatune_smoke.log 2>&1 &
           pid=$!
           sleep 2
           if ! kill -0 "$pid" 2>/dev/null; then
             echo "lumatune exited before the smoke test finished"
+            cat lumatune_smoke.log
+            exit 1
+          fi
+          if grep -Ei "qml:.*(error|warning)|qrc:.*(error|warning)" lumatune_smoke.log; then
+            echo "lumatune printed a QML error/warning during the smoke test"
+            cat lumatune_smoke.log
             exit 1
           fi
           kill "$pid"
+          # bash's `run:` shell has set -e on; `wait` returning 143 (SIGTERM,
+          # the expected outcome of the kill above) would otherwise abort
+          # the script here before the status check below ever runs.
+          status=0
+          wait "$pid" 2>/dev/null || status=$?
+          if [ "$status" -ne 0 ] && [ "$status" -ne 143 ]; then
+            echo "lumatune exited abnormally after the smoke test (status $status)"
+            cat lumatune_smoke.log
+            exit 1
+          fi
