@@ -1,7 +1,5 @@
 import QtQuick
 import QtQuick.Controls
-import LumaTune
-import LumaTune.Ui
 
 ApplicationWindow {
     id: window
