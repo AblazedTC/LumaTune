@@ -1,5 +1,10 @@
 import QtQuick
 import QtQuick.Controls
+// Self-import: a C++ type registered via this same module's SOURCES
+// (RecentFilesModel) isn't visible to this module's own QML_FILES
+// without it, even though the QML-defined Theme singleton is (verified
+// by a real CI failure: "RecentFilesModel is not a type").
+import LumaTune
 
 ApplicationWindow {
     id: window
