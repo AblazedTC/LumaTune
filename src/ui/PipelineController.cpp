@@ -99,7 +99,19 @@ void PipelineController::submitPreview() {
     auto resultSlot = std::make_shared<std::shared_ptr<const luma::PipelineResult>>();
     auto errorSlot = std::make_shared<QString>();
 
-    setBusy(true);
+    // setBusy(true) is called *after* submit() below, not before - its
+    // busyChanged() emission is synchronous, and a same-thread listener
+    // reacting to it by calling another setter would reenter
+    // submitPreview() and call *its* submit() first if this one hadn't
+    // already called its own. JobScheduler's slot always goes to
+    // whichever submit() call happens last in real time, so that
+    // ordering would let the reentrant (newer, higher-seq) job get
+    // evicted by this (older, lower-seq) one once this call finally got
+    // to its own submit() - the surviving job's seq would then never
+    // match m_requestSeq, leaving busy() stuck true (CodeRabbit review
+    // on PR #20, third pass). Calling submit() first means any
+    // reentrant call's submit() necessarily happens after this one, so
+    // submission order and seq order always agree.
     m_scheduler.submit(
         docId, luma::JobKind::Preview,
         [sourceCopy, params, resultSlot, errorSlot](const luma::CancelToken& token) {
@@ -164,6 +176,7 @@ void PipelineController::submitPreview() {
                 },
                 Qt::QueuedConnection);
         });
+    setBusy(true);
 }
 
 } // namespace luma::ui

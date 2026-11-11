@@ -27,6 +27,7 @@ private slots:
     void noDocumentNeverSubmits();
     void documentDestructionIsSafe();
     void switchingDocumentDropsStalePreview();
+    void reentrantBusyListenerDoesNotStickBusy();
 };
 
 void PipelineControllerTest::settingDocumentSubmitsPreview() {
@@ -150,6 +151,39 @@ void PipelineControllerTest::switchingDocumentDropsStalePreview() {
     const auto result =
         readySpy.at(0).at(0).value<std::shared_ptr<const luma::PipelineResult>>();
     QVERIFY(result != nullptr);
+}
+
+void PipelineControllerTest::reentrantBusyListenerDoesNotStickBusy() {
+    // CodeRabbit review on PR #20 (third pass): submitPreview() used to
+    // call setBusy(true) *before* its own scheduler.submit(). A
+    // same-thread busyChanged() listener that reacts by calling another
+    // setter would get its own (newer) job submitted first, then get
+    // evicted by this call's own (older) job once it finally reached its
+    // own submit() - permanently desyncing the seq check that clears
+    // busy(). Calling submit() before setBusy(true) fixes the ordering.
+    luma::ui::ImageDocument doc;
+    QVERIFY(doc.openPath(goldenFixture("neutral.png")));
+
+    luma::ui::PipelineController controller;
+    controller.setDocument(&doc);
+    QSignalSpy readySpy(&controller, &luma::ui::PipelineController::previewReady);
+    QVERIFY(readySpy.wait(kJobTimeoutMs));
+    readySpy.clear();
+
+    bool reentered = false;
+    QObject::connect(&controller, &luma::ui::PipelineController::busyChanged, [&]() {
+        if (controller.busy() && !reentered) {
+            reentered = true;
+            controller.setWhitePct(97.0f); // reentrant setter, called from inside busyChanged()
+        }
+    });
+
+    controller.setBlackPct(2.5f);
+    QVERIFY(reentered);
+
+    QVERIFY(readySpy.wait(kJobTimeoutMs));
+    QCOMPARE(readySpy.count(), 1);
+    QVERIFY(!controller.busy());
 }
 
 QTEST_GUILESS_MAIN(PipelineControllerTest)
