@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 
 #include <QMetaObject>
@@ -77,13 +78,6 @@ signals:
 private:
     void submitPreview();
     void setBusy(bool value);
-    // +1 when a job is submitted, -1 when its completion (stale or not)
-    // reaches the UI thread; busy() is simply "any job still pending".
-    // Tracking a count rather than a single bool is what keeps busy()
-    // correct across a document switch while the old document's job is
-    // still in flight (CodeRabbit review on PR #20) - a bool alone can't
-    // tell "my job finished" apart from "some job finished".
-    void adjustPendingJobs(int delta);
 
     luma::JobScheduler m_scheduler;
     // QPointer, not a raw pointer: ImageDocument's lifetime isn't owned
@@ -95,7 +89,18 @@ private:
     QPointer<ImageDocument> m_document;
     QMetaObject::Connection m_documentConnection;
     luma::Params m_params;
-    int m_pendingJobs{0};
+    // Bumped on every submitPreview() call; a completion only clears
+    // busy() if its own captured value still equals this (PipelineController.cpp:
+    // "only the latest submission's own completion clears busy"). Needed
+    // because JobScheduler silently drops a job that's superseded while
+    // still queued - no completion callback at all, not even a
+    // "cancelled" one - so a naive pending-job *count* would leak an
+    // unmatched increment for every such job and get stuck busy (a real
+    // bug CodeRabbit's review caught in this class's first attempt at
+    // this: tracking "is the most recent request still outstanding" by
+    // identity, as done here, needs no matching per-job decrement to
+    // begin with).
+    std::uint64_t m_requestSeq{0};
     bool m_busy{false};
 };
 

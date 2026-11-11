@@ -74,11 +74,6 @@ void PipelineController::setBusy(bool value) {
     emit busyChanged();
 }
 
-void PipelineController::adjustPendingJobs(int delta) {
-    m_pendingJobs += delta;
-    setBusy(m_pendingJobs > 0);
-}
-
 void PipelineController::submitPreview() {
     if (!m_document || !m_document->buffer()) {
         return;
@@ -94,6 +89,7 @@ void PipelineController::submitPreview() {
     const luma::Params params = m_params;
     ImageDocument* const requestDoc = m_document.data();
     const auto docId = static_cast<luma::DocumentId>(reinterpret_cast<std::uintptr_t>(requestDoc));
+    const std::uint64_t seq = ++m_requestSeq;
 
     // Both slots are local to this one job's pair of closures, not
     // PipelineController members - JobScheduler guarantees PREVIEW jobs
@@ -103,7 +99,7 @@ void PipelineController::submitPreview() {
     auto resultSlot = std::make_shared<std::shared_ptr<const luma::PipelineResult>>();
     auto errorSlot = std::make_shared<QString>();
 
-    adjustPendingJobs(+1);
+    setBusy(true);
     m_scheduler.submit(
         docId, luma::JobKind::Preview,
         [sourceCopy, params, resultSlot, errorSlot](const luma::CancelToken& token) {
@@ -122,28 +118,40 @@ void PipelineController::submitPreview() {
                 *errorSlot = QStringLiteral("Pipeline failed on this image's colour space");
             }
         },
-        [this, requestDoc, resultSlot, errorSlot]() {
+        [this, requestDoc, seq, resultSlot, errorSlot]() {
             // onComplete runs on the worker thread that just finished
             // the job above; invokeMethod with `this` as the context
             // object hands the rest off to the UI thread and is a no-op
             // if `this` is destroyed by the time it's processed.
             QMetaObject::invokeMethod(
                 this,
-                [this, requestDoc, resultSlot, errorSlot]() {
-                    // Always decrement, even if this job turns out to be
-                    // stale below - otherwise a job whose result we drop
-                    // would leave busy() stuck true forever.
-                    adjustPendingJobs(-1);
-                    // JobScheduler's own latest-only slot (JobScheduler.h)
-                    // only dedups PREVIEW jobs for the *same* DocumentId;
-                    // it has no notion of "the controller switched to a
-                    // different document". requestDoc is a plain pointer
-                    // captured at submission time purely for this identity
-                    // check (never dereferenced) - if m_document has since
-                    // changed (a document switch, or clearing to nullptr,
-                    // possibly triggered reentrantly by the busyChanged()
-                    // emitted above), this result belongs to a document
-                    // we're no longer showing, so it's dropped rather than
+                [this, requestDoc, seq, resultSlot, errorSlot]() {
+                    // Only the most-recently-*submitted* request's own
+                    // completion ever clears busy. A naive +1/-1 pending
+                    // count can't do this safely: JobScheduler silently
+                    // drops a PREVIEW job that gets superseded while
+                    // still queued (JobScheduler.cpp - no completion
+                    // callback at all, not even a "cancelled" one), so
+                    // an older request's "+1" would never see a matching
+                    // "-1" and busy() would get stuck true. The *latest*
+                    // request, by definition, is never superseded by
+                    // anything after it, so it's always guaranteed to
+                    // eventually complete and reach here - nothing else
+                    // needs to clear busy (CodeRabbit review on PR #20).
+                    if (seq == m_requestSeq) {
+                        setBusy(false);
+                    }
+                    // Separately: JobScheduler's latest-only slot only
+                    // dedups PREVIEW jobs for the *same* DocumentId; it
+                    // has no notion of "the controller switched to a
+                    // different document" (a switch starts an
+                    // independent job under a different DocumentId, so
+                    // it isn't superseded by anything and completes
+                    // normally). requestDoc is a plain pointer captured
+                    // at submission time purely for this identity check
+                    // (never dereferenced) - if m_document has since
+                    // changed, this result is for a document we're no
+                    // longer showing, so it's dropped rather than
                     // delivered as if current (CodeRabbit review on PR #20).
                     if (requestDoc != m_document) {
                         return;
