@@ -44,6 +44,9 @@ if(LUMA_BUILD_UI)
     include(Qt)
     add_subdirectory(src/ui)
     add_subdirectory(src/app)
+    if(LUMA_BUILD_TESTS)
+        add_subdirectory(tests/ui)
+    endif()
 endif()
 
 # PLAN.md P0.4 acceptance check: prove cv::ocl::haveOpenCL() is reachable

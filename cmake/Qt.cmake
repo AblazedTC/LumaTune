@@ -15,7 +15,7 @@ if(QT_ROOT)
     list(APPEND CMAKE_PREFIX_PATH "${QT_ROOT}")
 endif()
 
-find_package(Qt6 ${LUMA_QT_VERSION} CONFIG REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2)
+find_package(Qt6 ${LUMA_QT_VERSION} CONFIG REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Test)
 
 # Qt is LGPLv3; AGENTS.md §5 rule 7 requires dynamic linking only (no
 # static Qt). This is Qt's own default for the open-source kits
