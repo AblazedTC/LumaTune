@@ -5,6 +5,7 @@
 #include <QMetaObject>
 #include <QMetaType>
 #include <QObject>
+#include <QPointer>
 #include <QQmlEngine>
 #include <QString>
 
@@ -76,11 +77,25 @@ signals:
 private:
     void submitPreview();
     void setBusy(bool value);
+    // +1 when a job is submitted, -1 when its completion (stale or not)
+    // reaches the UI thread; busy() is simply "any job still pending".
+    // Tracking a count rather than a single bool is what keeps busy()
+    // correct across a document switch while the old document's job is
+    // still in flight (CodeRabbit review on PR #20) - a bool alone can't
+    // tell "my job finished" apart from "some job finished".
+    void adjustPendingJobs(int delta);
 
     luma::JobScheduler m_scheduler;
-    ImageDocument* m_document{nullptr};
+    // QPointer, not a raw pointer: ImageDocument's lifetime isn't owned
+    // by this class (QML/whoever calls setDocument() owns it), so it can
+    // be destroyed out from under us - QPointer auto-clears to nullptr
+    // when that happens instead of leaving a dangling pointer for the
+    // next setBlackPct()/etc. to dereference via submitPreview()
+    // (CodeRabbit review on PR #20).
+    QPointer<ImageDocument> m_document;
     QMetaObject::Connection m_documentConnection;
     luma::Params m_params;
+    int m_pendingJobs{0};
     bool m_busy{false};
 };
 

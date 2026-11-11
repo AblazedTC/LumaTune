@@ -22,7 +22,7 @@ class ImageDocument : public QObject {
     QML_ELEMENT
     Q_PROPERTY(QString path READ path NOTIFY pathChanged)
     Q_PROPERTY(bool loaded READ loaded NOTIFY pathChanged)
-    Q_PROPERTY(QString errorString READ errorString NOTIFY errorOccurred)
+    Q_PROPERTY(QString errorString READ errorString NOTIFY errorStringChanged)
 
 public:
     explicit ImageDocument(QObject* parent = nullptr);
@@ -45,6 +45,12 @@ public:
 signals:
     void pathChanged();
     void errorOccurred(const QString& message);
+    // Separate from errorOccurred() - that one fires only on failure;
+    // this is the errorString property's own change notification, so it
+    // also has to fire when a later successful open() clears the string
+    // (CodeRabbit review on PR #20: a QML binding to errorString would
+    // otherwise keep showing a stale error after a successful reopen).
+    void errorStringChanged();
 
 private:
     QString m_path;

@@ -27,6 +27,7 @@ bool ImageDocument::open(const QUrl& url) {
     if (local.isEmpty()) {
         m_errorString = QStringLiteral("Not a local file: %1").arg(url.toString());
         emit errorOccurred(m_errorString);
+        emit errorStringChanged();
         return false;
     }
     return openPath(local);
@@ -37,11 +38,15 @@ bool ImageDocument::openPath(const QString& path) {
     if (!result) {
         m_errorString = toMessage(result.error(), path);
         emit errorOccurred(m_errorString);
+        emit errorStringChanged();
         return false;
     }
     m_buffer = std::move(result.value());
     m_path = path;
-    m_errorString.clear();
+    if (!m_errorString.isEmpty()) {
+        m_errorString.clear();
+        emit errorStringChanged();
+    }
     emit pathChanged();
     return true;
 }

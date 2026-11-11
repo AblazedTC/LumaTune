@@ -22,6 +22,7 @@ private slots:
     void reportsErrorForMissingFile();
     void acceptsFileUrl();
     void rejectsNonLocalUrl();
+    void clearsErrorStringOnSuccessfulReopen();
 };
 
 void ImageDocumentTest::opensValidFixture() {
@@ -57,6 +58,20 @@ void ImageDocumentTest::rejectsNonLocalUrl() {
     QSignalSpy spy(&doc, &luma::ui::ImageDocument::errorOccurred);
     QVERIFY(!doc.open(QUrl(QStringLiteral("https://example.com/image.png"))));
     QVERIFY(!doc.loaded());
+    QCOMPARE(spy.count(), 1);
+}
+
+void ImageDocumentTest::clearsErrorStringOnSuccessfulReopen() {
+    // CodeRabbit review on PR #20: errorString's own NOTIFY must fire on
+    // the clearing path too, or a QML binding to it would keep showing a
+    // stale error after a later successful open.
+    luma::ui::ImageDocument doc;
+    QVERIFY(!doc.openPath(QStringLiteral("/nonexistent/path/does-not-exist.png")));
+    QVERIFY(!doc.errorString().isEmpty());
+
+    QSignalSpy spy(&doc, &luma::ui::ImageDocument::errorStringChanged);
+    QVERIFY(doc.openPath(goldenFixture("neutral.png")));
+    QVERIFY(doc.errorString().isEmpty());
     QCOMPARE(spy.count(), 1);
 }
 

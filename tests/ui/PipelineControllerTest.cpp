@@ -25,6 +25,8 @@ private slots:
     void changingParamSubmitsNewPreview();
     void rapidParamChangesDeliverOnlyTheLast();
     void noDocumentNeverSubmits();
+    void documentDestructionIsSafe();
+    void switchingDocumentDropsStalePreview();
 };
 
 void PipelineControllerTest::settingDocumentSubmitsPreview() {
@@ -97,6 +99,57 @@ void PipelineControllerTest::noDocumentNeverSubmits() {
 
     QVERIFY(!readySpy.wait(200)); // no document buffer to run against - nothing to wait for
     QCOMPARE(readySpy.count(), 0);
+}
+
+void PipelineControllerTest::documentDestructionIsSafe() {
+    // CodeRabbit review on PR #20: m_document used to be a raw pointer -
+    // destroying the document out from under the controller (QML can own
+    // both independently) would leave it dangling, and the next setter
+    // call would dereference it via submitPreview(). QPointer fixes this;
+    // this test is the regression guard for that fix.
+    auto* doc = new luma::ui::ImageDocument();
+    QVERIFY(doc->openPath(goldenFixture("neutral.png")));
+
+    luma::ui::PipelineController controller;
+    QSignalSpy readySpy(&controller, &luma::ui::PipelineController::previewReady);
+    controller.setDocument(doc);
+    QVERIFY(readySpy.wait(kJobTimeoutMs));
+    readySpy.clear();
+
+    delete doc;
+    QCOMPARE(controller.document(), nullptr);
+
+    controller.setBlackPct(3.0f); // must not dereference the now-dangling pointer
+    QVERIFY(!readySpy.wait(200)); // no buffer to run against any more
+    QCOMPARE(readySpy.count(), 0);
+}
+
+void PipelineControllerTest::switchingDocumentDropsStalePreview() {
+    // CodeRabbit review on PR #20: JobScheduler's latest-only PREVIEW slot
+    // only dedups jobs for the *same* DocumentId - switching to a second
+    // document starts an independent job that JobScheduler has no reason
+    // to consider stale. Both docA's and docB's jobs genuinely run; only
+    // docB's (the one still current when its result arrives) must ever
+    // reach previewReady.
+    luma::ui::ImageDocument docA;
+    QVERIFY(docA.openPath(goldenFixture("neutral.png")));
+    luma::ui::ImageDocument docB;
+    QVERIFY(docB.openPath(goldenFixture("warm_cast.jpg")));
+
+    luma::ui::PipelineController controller;
+    QSignalSpy readySpy(&controller, &luma::ui::PipelineController::previewReady);
+
+    controller.setDocument(&docA);
+    controller.setDocument(&docB); // switches before docA's job can plausibly have finished
+
+    QVERIFY(readySpy.wait(kJobTimeoutMs));
+    QTest::qWait(50); // give docA's result a chance to (incorrectly) arrive too, if it's going to
+    QCOMPARE(readySpy.count(), 1);
+    QVERIFY(!controller.busy());
+
+    const auto result =
+        readySpy.at(0).at(0).value<std::shared_ptr<const luma::PipelineResult>>();
+    QVERIFY(result != nullptr);
 }
 
 QTEST_GUILESS_MAIN(PipelineControllerTest)
