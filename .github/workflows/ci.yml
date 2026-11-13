@@ -290,6 +290,14 @@ jobs:
       - name: Build lumatune
         run: cmake --build --preset linux-gcc-release --target lumatune
 
+      # P2.2 chunk 1 (ImageDocument/PipelineController): builds + runs
+      # alongside lumatune in this same isolated job, same reasoning as
+      # the Configure step above - no separate job needed just for T-6.
+      - name: Build and run ui tests (T-6)
+        run: |
+          cmake --build --preset linux-gcc-release --target luma_ui_image_document_test luma_ui_pipeline_controller_test
+          ctest --preset linux-gcc-release -L ui --output-on-failure
+
       - name: Check --version exits 0 (PLAN.md P2.1 acceptance)
         run: ./build/linux-gcc-release/src/app/lumatune --version
 

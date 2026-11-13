@@ -24,7 +24,12 @@ qt_add_qml_module(luma_ui
     SOURCES
         RecentFilesModel.h
         RecentFilesModel.cpp
+        ImageDocument.h
+        ImageDocument.cpp
+        PipelineController.h
+        PipelineController.cpp
 )
 
-target_link_libraries(luma_ui PUBLIC Qt6::Core Qt6::Qml Qt6::Quick Qt6::QuickControls2)
+target_include_directories(luma_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(luma_ui PUBLIC Qt6::Core Qt6::Qml Qt6::Quick Qt6::QuickControls2 luma_core)
 luma_set_warnings(luma_ui)

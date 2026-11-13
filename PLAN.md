@@ -639,7 +639,7 @@ Timeline assumes one engineer + coding agents; sizes are per §0.
 | Task | Deliverable | Acceptance | Size | Deps |
 |---|---|---|---|---|
 | P2.1 (chunks 1–2 landed, Linux-only) | App skeleton: `main.cpp`, QML engine, `Theme.qml`, window, menus, drag-and-drop target, recent files store, `--version` — chunk 1 (Qt toolchain wiring, minimal app, `--version`) and chunk 2 (`Theme.qml`, `luma_ui`'s `RecentFilesModel`, File menu w/ Open Recent, window drop target) are in; Windows/macOS CI verification is the remaining follow-up | Launches and shows an empty window on 4 platforms; `lumatune --version` prints and exits 0 | M | P0.4 |
-| P2.2 | `ImageDocument`, `PipelineController` wired to `JobScheduler`; `PreviewItem` with RGBA16F `QSGTexture` | Open fixture → before/after visible; slider → preview < 100 ms on reference machine | L | P1.7, P2.1 |
+| P2.2 (chunk 1 landed) | `ImageDocument`, `PipelineController` wired to `JobScheduler`; `PreviewItem` with RGBA16F `QSGTexture` — chunk 1 (`ImageDocument` decode + `PipelineController` submitting PREVIEW jobs, V1-parity params, cross-thread result delivery, T-6 QTest coverage) is in; not yet wired into `Main.qml`/any QML, and `PreviewItem`'s texture upload is the remaining follow-up | Open fixture → before/after visible; slider → preview < 100 ms on reference machine | L | P1.7, P2.1 |
 | P2.3 | `Controls.qml`/`StageCard.qml` with V1's four sliders + numeric values + reset + bypass toggles | FR-8, FR-11 | M | P2.2 |
 | P2.4 | `HistogramItem` custom-painted; `DiagnosticsModel` readout incl. timings | FR-10, FR-14 (luma only this phase) | M | P2.2 |
 | P2.5 | Export dialog: format, JPEG quality, metadata toggle, derived filename | FR-3 | M | P1.3, P2.2 |
