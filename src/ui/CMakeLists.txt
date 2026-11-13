@@ -28,6 +28,8 @@ qt_add_qml_module(luma_ui
         ImageDocument.cpp
         PipelineController.h
         PipelineController.cpp
+        PreviewItem.h
+        PreviewItem.cpp
 )
 
 target_include_directories(luma_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

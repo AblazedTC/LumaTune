@@ -295,7 +295,7 @@ jobs:
       # the Configure step above - no separate job needed just for T-6.
       - name: Build and run ui tests (T-6)
         run: |
-          cmake --build --preset linux-gcc-release --target luma_ui_image_document_test luma_ui_pipeline_controller_test
+          cmake --build --preset linux-gcc-release --target luma_ui_image_document_test luma_ui_pipeline_controller_test luma_ui_preview_item_test
           ctest --preset linux-gcc-release -L ui --output-on-failure
 
       - name: Check --version exits 0 (PLAN.md P2.1 acceptance)
