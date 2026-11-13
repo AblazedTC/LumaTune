@@ -56,6 +56,15 @@ void PreviewItem::geometryChange(const QRectF& newGeometry, const QRectF& oldGeo
 QSGNode* PreviewItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) {
     auto* node = static_cast<QSGSimpleTextureNode*>(oldNode);
     if (!node) {
+        // No document has been opened yet (the common first frame - no
+        // CLI path, nothing dropped, nothing from recents) - a
+        // QSGSimpleTextureNode with no texture ever set on it crashes
+        // the scenegraph renderer (a real CI segfault caught by the
+        // Linux smoke test on PR #21), so there's nothing to add to the
+        // tree until the first result actually arrives.
+        if (!m_pending) {
+            return nullptr;
+        }
         node = new QSGSimpleTextureNode();
         node->setOwnsTexture(true);
         node->setFiltering(QSGTexture::Linear);
