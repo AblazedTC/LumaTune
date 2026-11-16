@@ -66,6 +66,24 @@ void PipelineController::setClaheTile(int value) {
     submitPreview();
 }
 
+void PipelineController::setLevelsBypass(bool value) {
+    if (m_params.levels.bypass == value) {
+        return;
+    }
+    m_params.levels.bypass = value;
+    emit paramsChanged();
+    submitPreview();
+}
+
+void PipelineController::setClaheBypass(bool value) {
+    if (m_params.clahe.bypass == value) {
+        return;
+    }
+    m_params.clahe.bypass = value;
+    emit paramsChanged();
+    submitPreview();
+}
+
 void PipelineController::setBusy(bool value) {
     if (m_busy == value) {
         return;

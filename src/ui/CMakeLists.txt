@@ -21,6 +21,9 @@ qt_add_qml_module(luma_ui
     QML_FILES
         qml/Main.qml
         qml/Theme.qml
+        qml/Controls.qml
+        qml/StageCard.qml
+        qml/ParamSlider.qml
     SOURCES
         RecentFilesModel.h
         RecentFilesModel.cpp
