@@ -15,7 +15,7 @@ if(QT_ROOT)
     list(APPEND CMAKE_PREFIX_PATH "${QT_ROOT}")
 endif()
 
-find_package(Qt6 ${LUMA_QT_VERSION} CONFIG REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2)
+find_package(Qt6 ${LUMA_QT_VERSION} CONFIG REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickDialogs2)
 # Test is only actually needed by tests/ui (gated on LUMA_BUILD_TESTS in
 # the top-level CMakeLists.txt) - requiring it unconditionally here would
 # fail configuration for a LUMA_BUILD_UI=ON + LUMA_BUILD_TESTS=OFF build

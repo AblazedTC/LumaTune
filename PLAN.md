@@ -642,7 +642,7 @@ Timeline assumes one engineer + coding agents; sizes are per §0.
 | P2.2 (chunks 1–2 landed) | `ImageDocument`, `PipelineController` wired to `JobScheduler`; `PreviewItem` with RGBA16F `QSGTexture` — chunk 1 (`ImageDocument` decode + `PipelineController` submitting PREVIEW jobs, V1-parity params, cross-thread result delivery, T-6 QTest coverage) and chunk 2 (`PreviewItem`'s RGBA16F texture upload, all three wired into `Main.qml`, drag-and-drop/recent-files/CLI-arg open) are in; `Controls.qml`'s sliders (P2.3) are the remaining way to actually see a parameter change | Open fixture → before/after visible; slider → preview < 100 ms on reference machine | L | P1.7, P2.1 |
 | P2.3 (landed) | `Controls.qml`/`StageCard.qml` with V1's four sliders + numeric values + reset + bypass toggles | FR-8, FR-11 | M | P2.2 |
 | P2.4 | `HistogramItem` custom-painted; `DiagnosticsModel` readout incl. timings | FR-10, FR-14 (luma only this phase) | M | P2.2 |
-| P2.5 | Export dialog: format, JPEG quality, metadata toggle, derived filename | FR-3 | M | P1.3, P2.2 |
+| P2.5 (landed) | Export dialog: format, JPEG quality, metadata toggle, derived filename | FR-3 | M | P1.3, P2.2 |
 | P2.6 | Error dialogs; status messages | FR-16 | S | P2.2 |
 | P2.7 | `--self-test` CLI mode (open fixture → run → export → exit) | T-10 passes headless on 4 platforms | S | P2.2, P2.5 |
 | P2.8 | Packaging scripts per platform; unsigned artefacts from CI; T-10 run against the packaged artefact | Artefacts launch on clean VMs; T-10 green from the bundle | L | P2.3, P2.4, P2.5, P2.6, P2.7 |

@@ -1,10 +1,14 @@
+#include <filesystem>
+
 #include <QObject>
 #include <QSignalSpy>
 #include <QString>
 #include <QTest>
+#include <QUrl>
 
 #include "ImageDocument.h"
 #include "PipelineController.h"
+#include "support/TempDir.h"
 
 namespace {
 QString goldenFixture(const QString& name) {
@@ -24,6 +28,8 @@ private slots:
     void settingDocumentSubmitsPreview();
     void changingParamSubmitsNewPreview();
     void togglingBypassSubmitsNewPreview();
+    void exportWritesFullResolutionFile();
+    void derivedExportPathMatchesConvention();
     void rapidParamChangesDeliverOnlyTheLast();
     void noDocumentNeverSubmits();
     void documentDestructionIsSafe();
@@ -90,6 +96,45 @@ void PipelineControllerTest::togglingBypassSubmitsNewPreview() {
     QVERIFY(readySpy.wait(kJobTimeoutMs));
     QCOMPARE(readySpy.count(), 1);
     QVERIFY(!controller.busy());
+}
+
+void PipelineControllerTest::exportWritesFullResolutionFile() {
+    // P2.5/FR-3: exportImage() runs JobKind::Export (FIFO, never
+    // cancelled by preview/slider activity, always fires onComplete -
+    // JobScheduler.h), distinct from submitPreview()'s latest-only
+    // PREVIEW slot - this is the regression guard that it actually
+    // reaches disk via Encoder.h's encodeImage(), not just the pipeline.
+    luma::ui::ImageDocument doc;
+    QVERIFY(doc.openPath(goldenFixture("neutral.png")));
+
+    luma::ui::PipelineController controller;
+    controller.setDocument(&doc);
+
+    luma::test::TempDir tempDir;
+    const QString outPath = QString::fromStdString((tempDir.path() / "out.png").string());
+
+    QSignalSpy succeededSpy(&controller, &luma::ui::PipelineController::exportSucceeded);
+    QSignalSpy failedSpy(&controller, &luma::ui::PipelineController::exportFailed);
+
+    QVERIFY(controller.exportImage(outPath, 90, false, true));
+    QVERIFY(controller.exporting());
+    QVERIFY(succeededSpy.wait(kJobTimeoutMs));
+    QCOMPARE(failedSpy.count(), 0);
+    QCOMPARE(succeededSpy.count(), 1);
+    QVERIFY(!controller.exporting());
+    QVERIFY(std::filesystem::exists(tempDir.path() / "out.png"));
+}
+
+void PipelineControllerTest::derivedExportPathMatchesConvention() {
+    luma::ui::ImageDocument doc;
+    QVERIFY(doc.openPath(goldenFixture("neutral.png")));
+
+    luma::ui::PipelineController controller;
+    controller.setDocument(&doc);
+
+    // FR-3's documented default filename: "<source>_enhanced.<ext>".
+    const QString derived = controller.derivedExportPath("png");
+    QVERIFY(derived.endsWith("neutral_enhanced.png"));
 }
 
 void PipelineControllerTest::rapidParamChangesDeliverOnlyTheLast() {

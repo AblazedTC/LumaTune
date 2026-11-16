@@ -9,6 +9,7 @@
 #include <QPointer>
 #include <QQmlEngine>
 #include <QString>
+#include <QUrl>
 
 #include "../core/engine/JobScheduler.h"
 #include "../core/engine/Params.h"
@@ -49,6 +50,7 @@ class PipelineController : public QObject {
     Q_PROPERTY(bool levelsBypass READ levelsBypass WRITE setLevelsBypass NOTIFY paramsChanged)
     Q_PROPERTY(bool claheBypass READ claheBypass WRITE setClaheBypass NOTIFY paramsChanged)
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
+    Q_PROPERTY(bool exporting READ exporting NOTIFY exportingChanged)
 
 public:
     explicit PipelineController(QObject* parent = nullptr);
@@ -71,6 +73,33 @@ public:
     void setClaheBypass(bool value);
 
     bool busy() const { return m_busy; }
+    bool exporting() const { return m_exporting; }
+
+    // Full-resolution export (PLAN.md P2.5/FR-3) - runs on JobKind::Export,
+    // which (unlike PREVIEW) is FIFO and never cancelled by slider
+    // activity (JobScheduler.h), so this takes its own immutable
+    // (source, Params) snapshot up front rather than reusing
+    // submitPreview()'s machinery. `path`'s extension picks the format
+    // (same convention as Encoder.h's encodeImage/cv::imwrite);
+    // jpegQuality/sixteenBitPng/preserveIcc mirror EncodeParams 1:1.
+    // Result arrives via exportSucceeded()/exportFailed(), not a return
+    // value - this only reports whether a document/buffer existed to
+    // start the job at all.
+    Q_INVOKABLE bool exportImage(const QString& path, int jpegQuality, bool sixteenBitPng,
+                                  bool preserveIcc);
+
+    // `<source>_enhanced.<ext>` (FR-3's documented default filename),
+    // derived from the open document's own path - empty if none is open.
+    // QML's ExportDialog.qml uses this to prefill the save-location field.
+    Q_INVOKABLE QString derivedExportPath(const QString& extension) const;
+
+    // FileDialog's selectedFile is a `url`, not a local path - stripping
+    // "file://" in QML/JS is not cross-platform-safe (Windows URLs are
+    // file:///C:/... - naive stripping leaves a stray leading slash
+    // before the drive letter). QUrl::toLocalFile() is the only correct
+    // conversion (same one ImageDocument::open() already relies on), so
+    // ExportDialog.qml routes through this instead of its own regex.
+    Q_INVOKABLE QString toLocalPath(const QUrl& url) const;
 
 signals:
     void documentChanged();
@@ -81,10 +110,14 @@ signals:
     // can connect to this.
     void previewReady(std::shared_ptr<const luma::PipelineResult> result);
     void previewFailed(QString message);
+    void exportingChanged();
+    void exportSucceeded(QString path);
+    void exportFailed(QString message);
 
 private:
     void submitPreview();
     void setBusy(bool value);
+    void setExporting(bool value);
 
     luma::JobScheduler m_scheduler;
     // QPointer, not a raw pointer: ImageDocument's lifetime isn't owned
@@ -109,6 +142,7 @@ private:
     // begin with).
     std::uint64_t m_requestSeq{0};
     bool m_busy{false};
+    bool m_exporting{false};
 };
 
 } // namespace luma::ui
