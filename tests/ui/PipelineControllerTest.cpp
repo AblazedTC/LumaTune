@@ -23,6 +23,7 @@ class PipelineControllerTest : public QObject {
 private slots:
     void settingDocumentSubmitsPreview();
     void changingParamSubmitsNewPreview();
+    void togglingBypassSubmitsNewPreview();
     void rapidParamChangesDeliverOnlyTheLast();
     void noDocumentNeverSubmits();
     void documentDestructionIsSafe();
@@ -64,6 +65,28 @@ void PipelineControllerTest::changingParamSubmitsNewPreview() {
     readySpy.clear();
 
     controller.setBlackPct(1.5f); // default is 0.5 (Params.h) - an actual change
+    QVERIFY(readySpy.wait(kJobTimeoutMs));
+    QCOMPARE(readySpy.count(), 1);
+    QVERIFY(!controller.busy());
+}
+
+void PipelineControllerTest::togglingBypassSubmitsNewPreview() {
+    // P2.3's bypass toggles (CLAHE/Levels) reuse submitPreview() exactly
+    // like the float sliders - this just confirms the new setters are
+    // wired the same way, not a new code path of their own.
+    luma::ui::ImageDocument doc;
+    QVERIFY(doc.openPath(goldenFixture("neutral.png")));
+
+    luma::ui::PipelineController controller;
+    controller.setDocument(&doc);
+
+    QSignalSpy readySpy(&controller, &luma::ui::PipelineController::previewReady);
+    QVERIFY(readySpy.wait(kJobTimeoutMs));
+    readySpy.clear();
+
+    QVERIFY(!controller.claheBypass()); // default is false (Params.h)
+    controller.setClaheBypass(true);
+    QVERIFY(controller.claheBypass());
     QVERIFY(readySpy.wait(kJobTimeoutMs));
     QCOMPARE(readySpy.count(), 1);
     QVERIFY(!controller.busy());

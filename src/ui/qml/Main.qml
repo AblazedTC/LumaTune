@@ -83,8 +83,25 @@ ApplicationWindow {
 
     PreviewItem {
         id: preview
-        anchors.fill: parent
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: controlsPane.left
         controller: pipeline
+    }
+
+    ScrollView {
+        id: controlsPane
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.right: parent.right
+        width: 280
+        clip: true
+
+        Controls {
+            width: controlsPane.width
+            controller: pipeline
+        }
     }
 
     // Drop target for opening a document. Only the first dropped URL

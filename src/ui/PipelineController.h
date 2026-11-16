@@ -28,10 +28,11 @@ namespace luma::ui {
 // in the meantime (the documented behaviour of that overload's "context
 // object" argument).
 //
-// Only the four V1-parity params (PLAN.md P2.3: "V1's four sliders") get
-// a Q_PROPERTY so far; the rest of luma::Params (WB method/strength,
-// curve knots, saturation) gets its own as Controls.qml grows into them
-// in P2.3 - adding unused properties now would be speculative.
+// The four V1-parity sliders (PLAN.md P2.3: "V1's four sliders") plus
+// Levels'/CLAHE's bypass toggles (P2.3: "bypass toggles") are the only
+// luma::Params fields with a Q_PROPERTY so far; the rest (WB
+// method/strength, curve knots, saturation) gets its own as Controls.qml
+// grows into them - adding unused properties now would be speculative.
 //
 // This is P2.2's controller half only. PreviewItem's RGBA16F QSGTexture
 // upload is a separate, later chunk - previewReady() just hands out the
@@ -45,6 +46,8 @@ class PipelineController : public QObject {
     Q_PROPERTY(float whitePct READ whitePct WRITE setWhitePct NOTIFY paramsChanged)
     Q_PROPERTY(float claheClip READ claheClip WRITE setClaheClip NOTIFY paramsChanged)
     Q_PROPERTY(int claheTile READ claheTile WRITE setClaheTile NOTIFY paramsChanged)
+    Q_PROPERTY(bool levelsBypass READ levelsBypass WRITE setLevelsBypass NOTIFY paramsChanged)
+    Q_PROPERTY(bool claheBypass READ claheBypass WRITE setClaheBypass NOTIFY paramsChanged)
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
 
 public:
@@ -62,6 +65,10 @@ public:
     void setClaheClip(float value);
     int claheTile() const { return m_params.clahe.tilesX; }
     void setClaheTile(int value);
+    bool levelsBypass() const { return m_params.levels.bypass; }
+    void setLevelsBypass(bool value);
+    bool claheBypass() const { return m_params.clahe.bypass; }
+    void setClaheBypass(bool value);
 
     bool busy() const { return m_busy; }
 
