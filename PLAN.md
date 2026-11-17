@@ -964,6 +964,7 @@ nightly: ASan/UBSan, TSan, fuzz 10 min, bench with history, package smoke T-10
 | R-10 | Own CLAHE on CPU limits GPU gains; chain break before CLAHE | Certain | Low–Medium | Measure in P1.10; if CLAHE dominates, implement an OpenCL kernel for `luma::Clahe` as a follow-up ADR |
 | R-11 | GPU EPs (DirectML/CoreML) not deliverable via vcpkg | High | Medium | DR-10 per-platform sourcing; configure-time assertions; CPU EP always works |
 | R-12 | GitHub no longer offers a free x64 macOS hosted runner (all current x64 labels are billed "larger runners"); mac-x64-release dropped from CI (P0.4) pending account billing setup | Medium | Medium | Build/verify x64 Mac locally until billing is resolved or a self-hosted runner is added; re-add the CI job at that point |
+| R-13 | `microsoft/onnxruntime`'s GitHub repository itself is unreachable (404, confirmed independently of vcpkg/CI - not a mirror/rate-limit issue; see [HN discussion](https://news.ycombinator.com/item?id=50539610)) as of 2026-11-17, breaking vcpkg's source download for every Linux build; `vcpkg.json`'s `onnxruntime` entry was unconditional for `platform: linux` | High (while the outage lasts) | Low right now | Removed from `vcpkg.json` entirely (discussed with the user) - nothing in `src/` consumes it yet (Phase 6/V4 prep only, DR-10), so this is a no-op for everything currently built. Re-add once the repo is reachable again; re-verify DR-10's per-platform sourcing plan still holds |
 
 ---
 

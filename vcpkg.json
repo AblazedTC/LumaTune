@@ -18,10 +18,6 @@
     "tl-expected",
     "catch2",
     "benchmark",
-    "nanobind",
-    {
-      "name": "onnxruntime",
-      "platform": "linux"
-    }
+    "nanobind"
   ]
 }
