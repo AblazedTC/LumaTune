@@ -36,6 +36,11 @@ ApplicationWindow {
         document: doc
     }
 
+    DiagnosticsModel {
+        id: diagnostics
+        controller: pipeline
+    }
+
     // Opens a path and, only on success, records it as recent - a failed
     // open (e.g. a stale recent entry whose file moved) shouldn't push
     // itself back to the top of its own list.
@@ -98,9 +103,38 @@ ApplicationWindow {
         width: 280
         clip: true
 
-        Controls {
+        Column {
             width: controlsPane.width
-            controller: pipeline
+            spacing: 12
+
+            Controls {
+                width: parent.width
+                controller: pipeline
+            }
+
+            // P2.4: luma-only before/after histogram (PLAN.md §8.1).
+            // RGB overlay, clipping indicators, and the log-scale toggle
+            // are P3.6.
+            HistogramItem {
+                width: parent.width
+                height: 80
+                controller: pipeline
+            }
+
+            // Per-stage readout (FR-10) - no dedicated Diagnostics.qml
+            // wrapper yet (same as HistogramItem/PreviewItem above):
+            // there's nothing beyond plain text to lay out until a
+            // later phase adds real styling/controls around it.
+            Label {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: qsTr("Black/white point: %1 / %2 (0-255)\nTotal: %3 ms%4\n%5")
+                    .arg(diagnostics.blackPoint.toFixed(1))
+                    .arg(diagnostics.whitePoint.toFixed(1))
+                    .arg(diagnostics.totalMs.toFixed(1))
+                    .arg(diagnostics.anyGpu ? qsTr(" (GPU)") : "")
+                    .arg(diagnostics.wbExplanation)
+            }
         }
     }
 

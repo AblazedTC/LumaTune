@@ -33,6 +33,10 @@ qt_add_qml_module(luma_ui
         PipelineController.cpp
         PreviewItem.h
         PreviewItem.cpp
+        DiagnosticsModel.h
+        DiagnosticsModel.cpp
+        HistogramItem.h
+        HistogramItem.cpp
 )
 
 target_include_directories(luma_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
