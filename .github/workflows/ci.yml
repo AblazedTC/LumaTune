@@ -360,3 +360,113 @@ jobs:
             build/linux-gcc-release/packaging-out/*.AppImage
             build/linux-gcc-release/packaging-out/*.tar.gz
           retention-days: 7
+
+  luma-ui-windows:
+    # P2.8 chunk 2/3: this repo's first-ever Windows LUMA_BUILD_UI=ON CI
+    # job (P2.1's own noted follow-up - only Linux has had one so far).
+    # Mirrors luma-ui's structure; shell: bash is explicit throughout so
+    # the exact same POSIX smoke-test/self-test script bodies work
+    # unchanged (Windows runners ship Git Bash).
+    name: lumatune (Windows, LUMA_BUILD_UI=ON)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Set up MSVC dev prompt
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Qt (AGENTS.md-pinned 6.11.x)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.11.2"
+          modules: "qtshadertools qtimageformats"
+
+      - name: Bootstrap vcpkg
+        shell: bash
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git "${{ github.workspace }}/vcpkg"
+          "${{ github.workspace }}/vcpkg/bootstrap-vcpkg.sh"
+          echo "VCPKG_ROOT=${{ github.workspace }}/vcpkg" >> "$GITHUB_ENV"
+
+      - name: Export GHA cache credentials for vcpkg
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Enable vcpkg binary caching
+        shell: bash
+        run: echo "VCPKG_BINARY_SOURCES=clear;x-gha,readwrite" >> "$GITHUB_ENV"
+
+      - name: Configure (LUMA_BUILD_UI=ON)
+        run: cmake --preset win-msvc-release -DLUMA_BUILD_UI=ON -DLUMA_BUILD_BENCH=OFF
+
+      - name: Build lumatune
+        run: cmake --build --preset win-msvc-release --target lumatune
+
+      - name: Build and run ui tests (T-6)
+        shell: bash
+        run: |
+          cmake --build --preset win-msvc-release --target luma_ui_image_document_test luma_ui_pipeline_controller_test luma_ui_preview_item_test luma_ui_diagnostics_model_test
+          ctest --preset win-msvc-release -L ui --output-on-failure
+
+      - name: Check --version exits 0 (PLAN.md P2.1 acceptance)
+        shell: bash
+        run: ./build/win-msvc-release/src/app/lumatune.exe --version
+
+      - name: Smoke-test launch (offscreen)
+        shell: bash
+        run: |
+          QT_QPA_PLATFORM=offscreen ./build/win-msvc-release/src/app/lumatune.exe > lumatune_smoke.log 2>&1 &
+          pid=$!
+          sleep 2
+          if ! kill -0 "$pid" 2>/dev/null; then
+            echo "lumatune exited before the smoke test finished"
+            cat lumatune_smoke.log
+            exit 1
+          fi
+          if grep -Ei "qml:.*(error|warning)|qrc:.*(error|warning)" lumatune_smoke.log; then
+            echo "lumatune printed a QML error/warning during the smoke test"
+            cat lumatune_smoke.log
+            exit 1
+          fi
+          kill "$pid"
+          status=0
+          wait "$pid" 2>/dev/null || status=$?
+          if [ "$status" -ne 0 ] && [ "$status" -ne 143 ]; then
+            echo "lumatune exited abnormally after the smoke test (status $status)"
+            cat lumatune_smoke.log
+            exit 1
+          fi
+
+      - name: Check --self-test exits 0 (PLAN.md P2.7/T-10)
+        shell: bash
+        run: ./build/win-msvc-release/src/app/lumatune.exe --self-test tests/golden/fixtures/warm_cast.jpg
+
+      # P2.8 (PLAN.md §12's Windows row): unsigned portable zip via
+      # windeployqt. The Inno Setup/WiX installer is a deferred
+      # follow-up, not part of this chunk - see packaging/windows/package.ps1.
+      # Authenticode signing is P7.1's job, later.
+      - name: Package (windeployqt + zip)
+        shell: pwsh
+        run: packaging\windows\package.ps1 -BuildDir build\win-msvc-release -OutDir build\win-msvc-release\packaging-out
+
+      # P2.8 acceptance: "T-10 green from the bundle", not just the raw
+      # build output above.
+      - name: Verify T-10 against the packaged zip
+        shell: pwsh
+        run: |
+          Expand-Archive -Path build\win-msvc-release\packaging-out\LumaTune-0.1.0-win64.zip -DestinationPath build\win-msvc-release\packaging-out\extracted
+          & build\win-msvc-release\packaging-out\extracted\lumatune.exe --self-test tests\golden\fixtures\warm_cast.jpg
+          if ($LASTEXITCODE -ne 0) { throw "self-test failed against packaged zip (exit $LASTEXITCODE)" }
+
+      - name: Upload Windows packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumatune-windows-x64
+          path: build/win-msvc-release/packaging-out/*.zip
+          retention-days: 7
