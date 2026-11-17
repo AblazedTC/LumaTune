@@ -330,3 +330,10 @@ jobs:
             cat lumatune_smoke.log
             exit 1
           fi
+
+      # P2.7/T-10: "opens fixture, runs pipeline, exports, exits 0" - no
+      # QT_QPA_PLATFORM needed here at all (unlike the smoke test above),
+      # since --self-test's QCoreApplication path never touches a QPA
+      # platform plugin.
+      - name: Check --self-test exits 0 (PLAN.md P2.7/T-10)
+        run: ./build/linux-gcc-release/src/app/lumatune --self-test tests/golden/fixtures/warm_cast.jpg
