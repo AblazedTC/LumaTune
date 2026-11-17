@@ -15,16 +15,26 @@ luma_set_warnings(luma_ui_image_document_test)
 add_executable(luma_ui_pipeline_controller_test PipelineControllerTest.cpp)
 target_link_libraries(luma_ui_pipeline_controller_test PRIVATE luma_ui Qt6::Test)
 target_compile_definitions(luma_ui_pipeline_controller_test PRIVATE LUMA_REPO_ROOT="${CMAKE_SOURCE_DIR}")
+# "support/TempDir.h" (P2.5's export test - AGENTS.md §9: "use
+# tests/support/TempDir" for real file IO), same convention as
+# tests/unit/CMakeLists.txt's luma_unit_tests target.
+target_include_directories(luma_ui_pipeline_controller_test PRIVATE ${CMAKE_SOURCE_DIR}/tests)
 luma_set_warnings(luma_ui_pipeline_controller_test)
 
 add_executable(luma_ui_preview_item_test PreviewItemTest.cpp)
 target_link_libraries(luma_ui_preview_item_test PRIVATE luma_ui Qt6::Test)
 luma_set_warnings(luma_ui_preview_item_test)
 
+add_executable(luma_ui_diagnostics_model_test DiagnosticsModelTest.cpp)
+target_link_libraries(luma_ui_diagnostics_model_test PRIVATE luma_ui Qt6::Test)
+target_compile_definitions(luma_ui_diagnostics_model_test PRIVATE LUMA_REPO_ROOT="${CMAKE_SOURCE_DIR}")
+luma_set_warnings(luma_ui_diagnostics_model_test)
+
 add_test(NAME ImageDocumentTest COMMAND luma_ui_image_document_test)
 add_test(NAME PipelineControllerTest COMMAND luma_ui_pipeline_controller_test)
 add_test(NAME PreviewItemTest COMMAND luma_ui_preview_item_test)
-set_tests_properties(ImageDocumentTest PipelineControllerTest PreviewItemTest PROPERTIES
+add_test(NAME DiagnosticsModelTest COMMAND luma_ui_diagnostics_model_test)
+set_tests_properties(ImageDocumentTest PipelineControllerTest PreviewItemTest DiagnosticsModelTest PROPERTIES
     LABELS "ui"
     ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
 )

@@ -3,7 +3,11 @@
 #include <cstdint>
 #include <utility>
 
+#include <QDir>
+#include <QFileInfo>
+
 #include "../core/engine/PreviewPolicy.h"
+#include "../core/io/Encoder.h"
 
 namespace luma::ui {
 
@@ -90,6 +94,78 @@ void PipelineController::setBusy(bool value) {
     }
     m_busy = value;
     emit busyChanged();
+}
+
+void PipelineController::setExporting(bool value) {
+    if (m_exporting == value) {
+        return;
+    }
+    m_exporting = value;
+    emit exportingChanged();
+}
+
+QString PipelineController::toLocalPath(const QUrl& url) const {
+    return url.isLocalFile() ? url.toLocalFile() : url.toString();
+}
+
+QString PipelineController::derivedExportPath(const QString& extension) const {
+    if (!m_document || m_document->path().isEmpty()) {
+        return {};
+    }
+    const QFileInfo info(m_document->path());
+    return info.dir().filePath(info.completeBaseName() + QStringLiteral("_enhanced.") + extension);
+}
+
+bool PipelineController::exportImage(const QString& path, int jpegQuality, bool sixteenBitPng,
+                                      bool preserveIcc) {
+    if (!m_document || !m_document->buffer()) {
+        return false;
+    }
+
+    // Full-resolution source, not submitPreview()'s preview proxy - export
+    // always runs the pipeline at the document's native size (AGENTS.md
+    // §6's preview-proxy row: "Percentiles from the proxy are used for
+    // preview only; FULL jobs recompute").
+    auto sourceCopy = std::make_shared<luma::ImageBuffer>(*m_document->buffer());
+    const luma::Params params = m_params;
+    const std::string destPath = path.toStdString();
+    const luma::EncodeParams encodeParams{jpegQuality, sixteenBitPng, preserveIcc};
+    const auto docId = static_cast<luma::DocumentId>(reinterpret_cast<std::uintptr_t>(m_document.data()));
+
+    auto resultSlot = std::make_shared<QString>(); // error message, empty on success
+
+    m_scheduler.submit(
+        docId, luma::JobKind::Export,
+        [sourceCopy, params, destPath, encodeParams, resultSlot](const luma::CancelToken&) {
+            // JobKind::Export's JobFn closes over an immutable snapshot
+            // and is never cancelled by preview/slider activity
+            // (JobScheduler.h) - the CancelToken is only ever checked by
+            // long-running stages internally, never by this job itself.
+            auto result = luma::runPipeline(*sourceCopy, params);
+            if (!result) {
+                *resultSlot = QStringLiteral("Pipeline failed on this image's colour space");
+                return;
+            }
+            auto encoded = luma::encodeImage(destPath, result->image, encodeParams);
+            if (!encoded) {
+                *resultSlot = QStringLiteral("Could not write %1").arg(QString::fromStdString(destPath));
+            }
+        },
+        [this, path, resultSlot]() {
+            QMetaObject::invokeMethod(
+                this,
+                [this, path, resultSlot]() {
+                    setExporting(false);
+                    if (resultSlot->isEmpty()) {
+                        emit exportSucceeded(path);
+                    } else {
+                        emit exportFailed(*resultSlot);
+                    }
+                },
+                Qt::QueuedConnection);
+        });
+    setExporting(true);
+    return true;
 }
 
 void PipelineController::submitPreview() {
