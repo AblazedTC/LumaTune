@@ -25,6 +25,7 @@ qt_add_qml_module(luma_ui
         qml/StageCard.qml
         qml/ParamSlider.qml
         qml/ExportDialog.qml
+        qml/ErrorDialog.qml
     SOURCES
         RecentFilesModel.h
         RecentFilesModel.cpp
