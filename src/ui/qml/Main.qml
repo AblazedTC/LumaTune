@@ -56,6 +56,48 @@ ApplicationWindow {
         }
     }
 
+    // P2.6/FR-16's status-message half, V1-parity wording
+    // (legacy/ui/main_window.py's statusBar().showMessage() call sites).
+    // basename() has no QML builtin - this one-liner is the whole
+    // reason it isn't worth a C++ helper (AGENTS.md §8: move JS longer
+    // than ~10 lines, not a single expression).
+    property string statusMessage: qsTr("No image open")
+    function basename(path) {
+        return path.split(/[\\/]/).pop()
+    }
+
+    Connections {
+        target: doc
+        function onPathChanged() {
+            if (doc.loaded) {
+                window.statusMessage = qsTr("Loaded: %1").arg(window.basename(doc.path))
+            }
+        }
+        function onErrorOccurred(message) {
+            // FR-16: modal, with path and reason - both already baked
+            // into `message` by ImageDocument::toMessage().
+            errorDialog.message = message
+            errorDialog.open()
+            window.statusMessage = message
+        }
+    }
+
+    Connections {
+        target: pipeline
+        function onPreviewFailed(message) {
+            // Not a file-IO error (ImageDocument's errorOccurred covers
+            // those) - a colour-space failure mid-pipeline. V1 only ever
+            // surfaced this in its status bar, never a modal, so this
+            // doesn't either.
+            window.statusMessage = qsTr("Pipeline error: %1").arg(message)
+        }
+    }
+
+    ErrorDialog {
+        id: errorDialog
+        anchors.centerIn: parent
+    }
+
     menuBar: MenuBar {
         Menu {
             title: qsTr("&File")
@@ -91,6 +133,15 @@ ApplicationWindow {
                 text: qsTr("E&xit")
                 onTriggered: Qt.quit()
             }
+        }
+    }
+
+    footer: ToolBar {
+        Label {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.leftMargin: 8
+            text: window.statusMessage
         }
     }
 
@@ -154,8 +205,8 @@ ApplicationWindow {
 
     // Drop target for opening a document. Only the first dropped URL
     // becomes the open document (batch import is BatchDialog's job,
-    // P2.5+) - a non-local URL just fails doc.open() silently for now
-    // (P2.6 wires up error dialogs).
+    // P2.5+) - a non-local URL now surfaces through the errorOccurred
+    // Connections above (P2.6) rather than failing silently.
     DropArea {
         anchors.fill: parent
         onDropped: (drop) => {
