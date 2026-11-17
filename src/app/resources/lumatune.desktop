@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=LumaTune
+Comment=Native desktop photo enhancer
+Exec=lumatune
+Icon=lumatune
+Categories=Graphics;Photography;
+Terminal=false

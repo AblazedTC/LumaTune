@@ -337,3 +337,26 @@ jobs:
       # platform plugin.
       - name: Check --self-test exits 0 (PLAN.md P2.7/T-10)
         run: ./build/linux-gcc-release/src/app/lumatune --self-test tests/golden/fixtures/warm_cast.jpg
+
+      # P2.8 (PLAN.md §12's Linux row): unsigned AppImage + tarball.
+      # AppImage signing is P7.1's job, later.
+      - name: Package (AppImage + tarball)
+        run: packaging/linux/package.sh build/linux-gcc-release build/linux-gcc-release/packaging-out
+
+      # P2.8 acceptance: "T-10 green from the bundle", not just the raw
+      # build output above - extract rather than mount (no FUSE on this
+      # runner, same reasoning as package.sh's APPIMAGE_EXTRACT_AND_RUN).
+      - name: Verify T-10 against the packaged AppImage
+        run: |
+          cd build/linux-gcc-release/packaging-out
+          ./LumaTune-0.1.0-x86_64.AppImage --appimage-extract
+          ./squashfs-root/AppRun --self-test "$GITHUB_WORKSPACE/tests/golden/fixtures/warm_cast.jpg"
+
+      - name: Upload Linux packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumatune-linux-x86_64
+          path: |
+            build/linux-gcc-release/packaging-out/*.AppImage
+            build/linux-gcc-release/packaging-out/*.tar.gz
+          retention-days: 7
