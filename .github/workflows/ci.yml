@@ -378,11 +378,20 @@ jobs:
       - name: Set up MSVC dev prompt
         uses: ilammy/msvc-dev-cmd@v1
 
+      # extra: "-b https://download.qt.io" pins aqtinstall to the
+      # primary official server - CI hit a repeatable (not transient)
+      # "Failed to locate XML data" error twice in a row against
+      # whatever mirror aqt's own load-balancer picked by default
+      # ("Failed to download checksum...This may happen on unofficial
+      # mirrors" - aqtinstall's own diagnostic). The Linux UI job's
+      # identical Qt install step isn't pinned and has never hit this,
+      # so it's left alone rather than pinning both speculatively.
       - name: Install Qt (AGENTS.md-pinned 6.11.x)
         uses: jurplel/install-qt-action@v4
         with:
           version: "6.11.2"
           modules: "qtshadertools qtimageformats"
+          extra: "-b https://download.qt.io"
 
       - name: Bootstrap vcpkg
         shell: bash
