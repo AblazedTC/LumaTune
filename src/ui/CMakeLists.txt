@@ -24,6 +24,7 @@ qt_add_qml_module(luma_ui
         qml/Controls.qml
         qml/StageCard.qml
         qml/ParamSlider.qml
+        qml/ExportDialog.qml
     SOURCES
         RecentFilesModel.h
         RecentFilesModel.cpp
@@ -40,5 +41,5 @@ qt_add_qml_module(luma_ui
 )
 
 target_include_directories(luma_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(luma_ui PUBLIC Qt6::Core Qt6::Qml Qt6::Quick Qt6::QuickControls2 luma_core)
+target_link_libraries(luma_ui PUBLIC Qt6::Core Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::QuickDialogs2 luma_core)
 luma_set_warnings(luma_ui)

@@ -80,10 +80,24 @@ ApplicationWindow {
             MenuSeparator {}
 
             MenuItem {
+                text: qsTr("&Export…")
+                enabled: doc.loaded
+                onTriggered: exportDialog.open()
+            }
+
+            MenuSeparator {}
+
+            MenuItem {
                 text: qsTr("E&xit")
                 onTriggered: Qt.quit()
             }
         }
+    }
+
+    ExportDialog {
+        id: exportDialog
+        anchors.centerIn: parent
+        controller: pipeline
     }
 
     PreviewItem {
