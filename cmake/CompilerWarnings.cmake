@@ -1,7 +1,14 @@
 # Warnings-as-errors for every luma_* target (AGENTS.md: "Warnings are errors in CI").
 function(luma_set_warnings target)
   if(MSVC)
-    target_compile_options(${target} PRIVATE /W4 /permissive- /WX /utf-8)
+    # /wd4702 (unreachable code): fires from Qt's own headers
+    # (qmetatype.h, qvariant.h, qjsengine.h) under MSVC's /W4 on any
+    # target that includes them - first hit building luma_ui/lumatune
+    # on MSVC at all (P2.8's Windows UI CI job). Not our code; same
+    # reasoning as the GCC -Wno-error=maybe-uninitialized exception
+    # below (a known false positive from a third-party header, not
+    # worth disabling /WX wholesale for).
+    target_compile_options(${target} PRIVATE /W4 /permissive- /WX /utf-8 /wd4702)
   else()
     target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Werror)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
