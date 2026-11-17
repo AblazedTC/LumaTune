@@ -413,8 +413,11 @@ jobs:
         shell: bash
         run: echo "VCPKG_BINARY_SOURCES=clear;x-gha,readwrite" >> "$GITHUB_ENV"
 
+      # LUMA_QT_VERSION=6.10.0 matches the Qt actually installed above
+      # (cmake/Qt.cmake's own comment explains why) - find_package would
+      # otherwise reject it as "not compatible" with the real 6.11.x pin.
       - name: Configure (LUMA_BUILD_UI=ON)
-        run: cmake --preset win-msvc-release -DLUMA_BUILD_UI=ON -DLUMA_BUILD_BENCH=OFF
+        run: cmake --preset win-msvc-release -DLUMA_BUILD_UI=ON -DLUMA_BUILD_BENCH=OFF -DLUMA_QT_VERSION=6.10.0
 
       - name: Build lumatune
         run: cmake --build --preset win-msvc-release --target lumatune

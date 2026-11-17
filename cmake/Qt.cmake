@@ -3,7 +3,16 @@
 # Minimum, not EXACT, version match - robust against aqtinstall resolving
 # a slightly newer 6.11.x patch than this file names; CI's install step
 # and this pin should still both track the same 6.11.x line by hand.
-set(LUMA_QT_VERSION "6.11.2")
+#
+# Pre-settable via -D, not a plain unconditional set(), *only* so the
+# Windows UI CI job (.github/workflows/ci.yml) can override it to
+# 6.10.0 - aqtinstall 3.3.0 cannot install any 6.11.x on Windows at all
+# (a reproduced upstream bug, PLAN.md's P2.8 note), while every other
+# build (including this project's own documented local setup) gets the
+# real 6.11.x pin untouched.
+if(NOT DEFINED LUMA_QT_VERSION)
+    set(LUMA_QT_VERSION "6.11.2")
+endif()
 
 # QT_ROOT (the kit dir, e.g. .../6.11.2/msvc2022_64) is how AGENTS.md's
 # documented manual-install workflow points CMake at Qt; CI instead lets
