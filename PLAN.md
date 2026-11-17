@@ -645,7 +645,7 @@ Timeline assumes one engineer + coding agents; sizes are per §0.
 | P2.5 (landed) | Export dialog: format, JPEG quality, metadata toggle, derived filename | FR-3 | M | P1.3, P2.2 |
 | P2.6 (landed) | Error dialogs; status messages | FR-16 | S | P2.2 |
 | P2.7 (landed, Linux-only) | `--self-test` CLI mode (open fixture → run → export → exit) | T-10 passes headless on 4 platforms | S | P2.2, P2.5 |
-| P2.8 | Packaging scripts per platform; unsigned artefacts from CI; T-10 run against the packaged artefact | Artefacts launch on clean VMs; T-10 green from the bundle | L | P2.3, P2.4, P2.5, P2.6, P2.7 |
+| P2.8 (chunk 1/3 landed: Linux AppImage+tarball) | Packaging scripts per platform; unsigned artefacts from CI; T-10 run against the packaged artefact — chunk 1 (Linux: `linuxdeploy`+`linuxdeploy-plugin-qt` AppImage, plain tarball, T-10 run against the extracted AppImage, all wired into CI) is in; Windows (`windeployqt`+installer) and macOS (`macdeployqt`+dmg) are the remaining chunks — both also need their first-ever `LUMA_BUILD_UI=ON` CI job, since only Linux has one so far (P2.1's own noted follow-up) | Artefacts launch on clean VMs; T-10 green from the bundle | L | P2.3, P2.4, P2.5, P2.6, P2.7 |
 
 **Gate G2:** Everything V1 could do, the C++ app does, with a side-by-side manual check on the 12 fixtures; T-6 and T-10 green; unsigned installers produced by CI.
 
