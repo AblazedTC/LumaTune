@@ -10,7 +10,7 @@ BUILD_DIR="${1:?usage: package.sh <build-dir> <output-dir>}"
 OUT_DIR="${2:?usage: package.sh <build-dir> <output-dir>}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-LINUXDEPLOY_VERSION="1-alpha-20250213-1"
+LINUXDEPLOY_VERSION="1-alpha-20251107-1"
 # linuxdeploy-plugin-qt has no versioned releases as of this writing -
 # "continuous" is the only tag it publishes.
 LINUXDEPLOY_QT_VERSION="continuous"
