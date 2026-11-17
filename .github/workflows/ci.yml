@@ -416,8 +416,15 @@ jobs:
       # LUMA_QT_VERSION=6.10.0 matches the Qt actually installed above
       # (cmake/Qt.cmake's own comment explains why) - find_package would
       # otherwise reject it as "not compatible" with the real 6.11.x pin.
+      # Quoted, unlike the other -D flags: pwsh (the default shell here)
+      # mis-tokenizes a bare "-DFOO=6.10.0" into "-DFOO=6" and ".10.0"
+      # as two separate arguments - it tries to parse the dotted value
+      # as a numeric literal and splits where that parse gives up.
+      # Verified both the bug and the quoted fix directly in pwsh before
+      # pushing (`'-DLUMA_QT_VERSION=6.10.0'` tokenizes as one argument,
+      # a bare one doesn't).
       - name: Configure (LUMA_BUILD_UI=ON)
-        run: cmake --preset win-msvc-release -DLUMA_BUILD_UI=ON -DLUMA_BUILD_BENCH=OFF -DLUMA_QT_VERSION=6.10.0
+        run: cmake --preset win-msvc-release -DLUMA_BUILD_UI=ON -DLUMA_BUILD_BENCH=OFF '-DLUMA_QT_VERSION=6.10.0'
 
       - name: Build lumatune
         run: cmake --build --preset win-msvc-release --target lumatune
