@@ -5,6 +5,7 @@
 #include <QEventLoop>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include <QQuickStyle>
 #include <QString>
 #include <QTemporaryDir>
 #include <QTimer>
@@ -96,6 +97,12 @@ int main(int argc, char* argv[]) {
         }
         initialPath = QString::fromLocal8Bit(argv[i]);
     }
+
+    // The native per-platform style (Windows' default) can't customize a
+    // GroupBox's "label" sub-control (StageCard.qml's checkable group box),
+    // only a non-native style can - same reason legacy/app.py forces Fusion
+    // on the Widgets side.
+    QQuickStyle::setStyle("Fusion");
 
     QGuiApplication app(argc, argv);
     // RecentFilesModel's QSettings calls need these to pick a stable
