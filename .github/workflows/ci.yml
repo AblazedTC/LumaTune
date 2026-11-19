@@ -491,3 +491,116 @@ jobs:
           name: lumatune-windows-x64
           path: build/win-msvc-release/packaging-out/*.zip
           retention-days: 7
+
+  luma-ui-macos:
+    # P2.8 chunk 3/3: this repo's first-ever macOS LUMA_BUILD_UI=ON CI
+    # job (P2.1's own noted follow-up). Mirrors luma-ui's structure,
+    # plus the macOS-only vcpkg/libomp setup steps the main `build`
+    # job's macos-15 matrix entry already needed. Unlike Windows,
+    # 6.11.2 installs cleanly here - checked the macOS Qt repository
+    # layout directly before writing this job: mac_x64/desktop's
+    # combined qt6_6112/qt6_6112/Updates.xml exists (unlike Windows's
+    # equivalent, which 404s - the actual root cause of that whole
+    # debugging chain), so aqtinstall's lookup path works unmodified.
+    name: lumatune (macOS, LUMA_BUILD_UI=ON)
+    runs-on: macos-15 # arm64 runner, same as the main build job's matrix entry
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Install Qt (AGENTS.md-pinned 6.11.x)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.11.2"
+          modules: "qtshadertools qtimageformats"
+
+      - name: Install autotools build deps for vcpkg's autotools-based ports
+        run: brew install autoconf autoconf-archive automake libtool
+
+      # Apple Clang ships no omp.h/libomp, so libraw[openmp] (vcpkg)
+      # fails to even configure without this (same as the main build
+      # job's macOS matrix entry).
+      - name: Install libomp for libraw's openmp feature
+        run: |
+          brew install libomp
+          echo "OpenMP_ROOT=$(brew --prefix libomp)" >> "$GITHUB_ENV"
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git "${{ github.workspace }}/vcpkg"
+          "${{ github.workspace }}/vcpkg/bootstrap-vcpkg.sh"
+          echo "VCPKG_ROOT=${{ github.workspace }}/vcpkg" >> "$GITHUB_ENV"
+
+      - name: Export GHA cache credentials for vcpkg
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Enable vcpkg binary caching
+        run: echo "VCPKG_BINARY_SOURCES=clear;x-gha,readwrite" >> "$GITHUB_ENV"
+
+      - name: Configure (LUMA_BUILD_UI=ON)
+        run: cmake --preset mac-arm64-release -DLUMA_BUILD_UI=ON -DLUMA_BUILD_BENCH=OFF
+
+      - name: Build lumatune
+        run: cmake --build --preset mac-arm64-release --target lumatune
+
+      - name: Build and run ui tests (T-6)
+        run: |
+          cmake --build --preset mac-arm64-release --target luma_ui_image_document_test luma_ui_pipeline_controller_test luma_ui_preview_item_test luma_ui_diagnostics_model_test
+          ctest --preset mac-arm64-release -L ui --output-on-failure
+
+      - name: Check --version exits 0 (PLAN.md P2.1 acceptance)
+        run: ./build/mac-arm64-release/src/app/lumatune.app/Contents/MacOS/lumatune --version
+
+      - name: Smoke-test launch (offscreen)
+        run: |
+          QT_QPA_PLATFORM=offscreen ./build/mac-arm64-release/src/app/lumatune.app/Contents/MacOS/lumatune > lumatune_smoke.log 2>&1 &
+          pid=$!
+          sleep 2
+          if ! kill -0 "$pid" 2>/dev/null; then
+            echo "lumatune exited before the smoke test finished"
+            cat lumatune_smoke.log
+            exit 1
+          fi
+          if grep -Ei "qml:.*(error|warning)|qrc:.*(error|warning)" lumatune_smoke.log; then
+            echo "lumatune printed a QML error/warning during the smoke test"
+            cat lumatune_smoke.log
+            exit 1
+          fi
+          kill "$pid"
+          status=0
+          wait "$pid" 2>/dev/null || status=$?
+          if [ "$status" -ne 0 ] && [ "$status" -ne 143 ]; then
+            echo "lumatune exited abnormally after the smoke test (status $status)"
+            cat lumatune_smoke.log
+            exit 1
+          fi
+
+      - name: Check --self-test exits 0 (PLAN.md P2.7/T-10)
+        run: ./build/mac-arm64-release/src/app/lumatune.app/Contents/MacOS/lumatune --self-test tests/golden/fixtures/warm_cast.jpg
+
+      # P2.8 (PLAN.md §12's macOS row): unsigned dmg via macdeployqt.
+      # Developer ID signing/notarization is P7.1's job, later.
+      - name: Package (macdeployqt + dmg)
+        run: packaging/macos/package.sh build/mac-arm64-release build/mac-arm64-release/packaging-out
+
+      # P2.8 acceptance: "T-10 green from the bundle" - macdeployqt
+      # modifies the .app bundle in place to be self-contained before
+      # wrapping it in the dmg, so re-running --self-test against that
+      # same bundle (rather than mounting the dmg just to re-extract
+      # the identical bundle from it) verifies the exact thing that
+      # ships inside the dmg.
+      - name: Verify T-10 against the packaged app bundle
+        run: ./build/mac-arm64-release/src/app/lumatune.app/Contents/MacOS/lumatune --self-test tests/golden/fixtures/warm_cast.jpg
+
+      - name: Upload macOS packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumatune-macos-arm64
+          path: build/mac-arm64-release/packaging-out/*.dmg
+          retention-days: 7
